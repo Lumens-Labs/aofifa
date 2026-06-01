@@ -1,0 +1,52 @@
+package com.example.myapplication.data.repository
+
+import com.example.myapplication.data.local.AppDatabase
+import com.example.myapplication.data.mapper.toDomain
+import com.example.myapplication.data.mapper.toEntity
+import com.example.myapplication.data.remote.AoApiService
+import com.example.myapplication.domain.model.Asado
+import com.example.myapplication.domain.model.Match
+import com.example.myapplication.domain.model.Player
+import com.example.myapplication.domain.model.Snapshot
+import com.example.myapplication.domain.model.SnapshotMetadata
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+
+class AoRepository(
+    private val db: AppDatabase,
+    private val api: AoApiService
+) {
+    val players: Flow<List<Player>> = db.playerDao().getAllPlayers().map { entities ->
+        entities.map { it.toDomain() }
+    }
+
+    val matches: Flow<List<Match>> = db.matchDao().getAllMatches().map { entities ->
+        entities.map { it.toDomain() }
+    }
+
+    val asados: Flow<List<Asado>> = db.asadoDao().getAllAsados().map { entities ->
+        entities.map { it.toDomain() }
+    }
+
+    val snapshot: Flow<Snapshot> = combine(players, matches, asados) { p, m, a ->
+        Snapshot(p, a, m, SnapshotMetadata("1.0.0"))
+    }
+
+    suspend fun refreshData() {
+        val remoteSnapshot = api.getSnapshot()
+        
+        db.playerDao().deleteAllPlayers()
+        db.matchDao().deleteAllMatches()
+        db.asadoDao().deleteAllAsados()
+
+        db.playerDao().insertPlayers(remoteSnapshot.players.map { it.toEntity() })
+        db.matchDao().insertMatches(remoteSnapshot.matches.map { it.toEntity() })
+        db.asadoDao().insertAsados(remoteSnapshot.asados.map { it.toEntity() })
+    }
+
+    suspend fun syncSnapshot(snapshot: Snapshot) {
+        api.postSnapshot(snapshot)
+        // Optionally update local DB after successful post
+    }
+}

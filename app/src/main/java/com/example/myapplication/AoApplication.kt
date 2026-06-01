@@ -1,0 +1,44 @@
+package com.example.myapplication
+
+import android.app.Application
+import androidx.room.Room
+import com.example.myapplication.data.local.AppDatabase
+import com.example.myapplication.data.remote.AoApiService
+import com.example.myapplication.data.repository.AoRepository
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+
+class AoApplication : Application() {
+
+    lateinit var repository: AoRepository
+
+    override fun onCreate() {
+        super.onCreate()
+
+        val db = Room.databaseBuilder(
+            applicationContext,
+            AppDatabase::class.java,
+            "ao_database"
+        ).fallbackToDestructiveMigration()
+            .build()
+
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .build()
+
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://nejca.com.ar/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        val api = retrofit.create(AoApiService::class.java)
+
+        repository = AoRepository(db, api)
+    }
+}
