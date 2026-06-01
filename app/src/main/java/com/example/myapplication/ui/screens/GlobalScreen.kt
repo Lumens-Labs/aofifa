@@ -21,9 +21,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
+import com.example.myapplication.domain.logic.RankingEngine
 import com.example.myapplication.domain.model.Player
-import com.example.myapplication.ui.theme.DeepBlue
-import com.example.myapplication.ui.theme.NeonGreen
+import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.theme.PlayerIcons
 import com.example.myapplication.ui.viewmodel.MainViewModel
 
@@ -41,10 +41,10 @@ fun GlobalScreen(viewModel: MainViewModel) {
     }
 
     snapshot?.let { data ->
-        val sortedPlayers = data.players.sortedByDescending { it.elo }
-        val allStats = com.example.myapplication.domain.logic.RankingEngine.calculateAsadoRanking(
-            data.players.map { it.id }, data.matches
-        ).associateBy { it.playerId }
+        val processedStats = RankingEngine.processAllStats(data.players, data.asados, data.matches)
+        val allStats = processedStats.associateBy { it.playerId }
+        val sortedByElo = processedStats.sortedByDescending { it.elo }
+        val mvpHistorical = processedStats.maxByOrNull { it.mvpCount }
         
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -61,13 +61,13 @@ fun GlobalScreen(viewModel: MainViewModel) {
                         text = "AO&FIFA",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
-                        color = NeonGreen
+                        color = AoOrange
                     )
                     Text(
                         text = "by Nejca",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = DeepBlue
+                        color = AoOrange
                     )
                 }
             }
@@ -104,8 +104,11 @@ fun GlobalScreen(viewModel: MainViewModel) {
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                if (sortedPlayers.isNotEmpty()) {
-                    MvpCard(sortedPlayers[0])
+                mvpHistorical?.let { stats ->
+                    val player = data.players.find { it.id == stats.playerId }
+                    if (player != null) {
+                        MvpCard(player, stats)
+                    }
                 }
             }
 
@@ -118,8 +121,11 @@ fun GlobalScreen(viewModel: MainViewModel) {
                 )
             }
 
-            itemsIndexed(sortedPlayers) { index, player ->
-                PlayerCard(index + 1, player, allStats[player.id])
+            itemsIndexed(sortedByElo) { index, stats ->
+                val player = data.players.find { it.id == stats.playerId }
+                if (player != null) {
+                    PlayerCard(index + 1, player, stats)
+                }
             }
         }
     } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -128,7 +134,7 @@ fun GlobalScreen(viewModel: MainViewModel) {
 }
 
 @Composable
-fun MvpCard(player: Player) {
+fun MvpCard(player: Player, stats: com.example.myapplication.domain.logic.PlayerStats) {
     val playerColor = try { Color((player.colorHex ?: "#00E676").toColorInt()) } catch (e: Exception) { Color.Green }
     
     Card(
@@ -145,14 +151,14 @@ fun MvpCard(player: Player) {
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(text = player.name, fontWeight = FontWeight.Black, fontSize = 24.sp)
-                Text(text = "Dominando con ${player.elo} ELO", style = MaterialTheme.typography.bodyMedium)
+                Text(text = "MVPs: ${stats.mvpCount} | ELO: ${stats.elo}", style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
 }
 
 @Composable
-fun PlayerCard(rank: Int, player: Player, stats: com.example.myapplication.domain.logic.PlayerStats? = null) {
+fun PlayerCard(rank: Int, player: Player, stats: com.example.myapplication.domain.logic.PlayerStats) {
     val playerColor = try { Color((player.colorHex ?: "#00E676").toColorInt()) } catch (e: Exception) { Color.Green }
 
     Card(
@@ -174,11 +180,11 @@ fun PlayerCard(rank: Int, player: Player, stats: com.example.myapplication.domai
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = player.name, fontWeight = FontWeight.Bold)
                 Text(
-                    text = "Record: ${stats?.wins ?: 0}W - ${stats?.losses ?: 0}L | WinRate: ${stats?.winRate ?: 0.0}%",
+                    text = "Record: ${stats.wins}W - ${stats.losses}L | WinRate: ${stats.winRate}%",
                     fontSize = 12.sp
                 )
             }
-            Text(text = "${player.elo}", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+            Text(text = "${stats.elo}", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
         }
     }
 }

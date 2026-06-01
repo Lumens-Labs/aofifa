@@ -1,91 +1,188 @@
 package com.example.myapplication.domain.logic
 
+import com.example.myapplication.domain.model.Asado
 import com.example.myapplication.domain.model.Match
 import com.example.myapplication.domain.model.Player
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 data class PlayerStats(
     val playerId: String,
+    val played: Int = 0,
     val wins: Int = 0,
     val losses: Int = 0,
-    val goalsFor: Int = 0,
-    val goalsAgainst: Int = 0,
-    val points: Int = 0,
     val winRate: Double = 0.0,
+    val totalPoints: Int = 0,
+    val averagePoints: Double = 0.0,
+    val mvpCount: Int = 0,
     val bestVictimId: String? = null,
-    val nemesisId: String? = null
+    val nemesisId: String? = null,
+    val elo: Int = 1500,
+    val asadosPlayed: Int = 0
+)
+
+data class AsadoRanking(
+    val asadoId: String,
+    val date: String,
+    val rankings: List<AsadoPlayerRank>
+)
+
+data class AsadoPlayerRank(
+    val playerId: String,
+    val wins: Int,
+    val losses: Int,
+    val points: Int,
+    val position: Int // 0-based
 )
 
 object RankingEngine {
 
-    fun calculateAsadoRanking(playerIds: List<String>, matches: List<Match>): List<PlayerStats> {
-        val statsMap = playerIds.associateWith { PlayerStats(it) }.toMutableMap()
+    fun processAllStats(players: List<Player>, asados: List<Asado>, matches: List<Match>): List<PlayerStats> {
+        // 1. Initial State
+        var statsMap = players.associate { it.id to PlayerStats(it.id) }.toMutableMap()
+        val h2hMap = mutableMapOf<String, MutableMap<String, Pair<Int, Int>>>() // PlayerId -> OpponentId -> (Wins, Losses)
 
-        matches.forEach { match ->
-            val winner = statsMap[match.winnerId] ?: PlayerStats(match.winnerId)
-            val loser = statsMap[match.loserId] ?: PlayerStats(match.loserId)
+        // 2. Sort Data Chronologically
+        val sortedAsados = asados.sortedBy { it.date }
+        val sortedMatches = matches.sortedBy { it.createdAt ?: "" }
+        val matchesByAsado = sortedMatches.groupBy { it.asadoId }
 
-            statsMap[match.winnerId] = winner.copy(
-                wins = winner.wins + 1,
-                goalsFor = winner.goalsFor + match.winnerGoles,
-                goalsAgainst = winner.goalsAgainst + match.loserGoles
-            )
-            statsMap[match.loserId] = loser.copy(
-                losses = loser.losses + 1,
-                goalsFor = loser.goalsFor + match.loserGoles,
-                goalsAgainst = loser.goalsAgainst + match.winnerGoles
-            )
+        // 3. Incremental ELO Calculation (Global)
+        val currentElos = players.associate { it.id to 1500 }.toMutableMap()
+        sortedMatches.forEach { match ->
+            val winnerElo = currentElos[match.winnerId] ?: 1500
+            val loserElo = currentElos[match.loserId] ?: 1500
+
+            val (newWinnerElo, newLoserElo) = EloCalculator.calculateNewElos(winnerElo, loserElo)
+            currentElos[match.winnerId] = newWinnerElo
+            currentElos[match.loserId] = newLoserElo
+
+            // Update H2H Global
+            updateH2H(h2hMap, match.winnerId, match.loserId)
         }
 
+        // 4. Per Asado Processing
+        sortedAsados.forEach { asado ->
+            val asadoMatches = matchesByAsado[asado.id] ?: emptyList()
+            if (asadoMatches.isEmpty()) return@forEach
+
+            val participants = asado.playerIds.distinct()
+            val asadoPlayerStats = participants.map { pid ->
+                val pWins = asadoMatches.count { it.winnerId == pid }
+                val pLosses = asadoMatches.count { it.loserId == pid }
+                pid to (pWins to pLosses)
+            }.toMap()
+
+            // Sort Asado Ranking
+            val sortedParticipants = participants.sortedWith { p1, p2 ->
+                val stats1 = asadoPlayerStats[p1] ?: (0 to 0)
+                val stats2 = asadoPlayerStats[p2] ?: (0 to 0)
+
+                // 1. Wins
+                if (stats1.first != stats2.first) return@sortedWith stats2.first.compareTo(stats1.first)
+                // 2. Losses (Fewer is better)
+                if (stats1.second != stats2.second) return@sortedWith stats1.second.compareTo(stats2.second)
+                // 3. H2H in this asado
+                val h2h = calculateAsadoH2H(p1, p2, asadoMatches)
+                if (h2h != 0) return@sortedWith h2h
+                
+                0
+            }
+
+            // Assign Points
+            val n = sortedParticipants.size
+            sortedParticipants.forEachIndexed { i, pid ->
+                val points = if (n <= 1) 10 else {
+                    (10.0 - (9.0 * i) / (n - 1)).roundToInt().coerceAtLeast(1)
+                }
+                
+                val current = statsMap[pid] ?: PlayerStats(pid)
+                statsMap[pid] = current.copy(
+                    totalPoints = current.totalPoints + points,
+                    mvpCount = current.mvpCount + if (i == 0) 1 else 0,
+                    asadosPlayed = current.asadosPlayed + 1
+                )
+            }
+        }
+
+        // 5. Finalize Global Stats
         return statsMap.values.map { stats ->
-            val totalGames = stats.wins + stats.losses
-            val winRate = if (totalGames > 0) (stats.wins.toDouble() / totalGames * 100.0) else 0.0
-            val bestVictim = calculateBestVictim(stats.playerId, matches)
-            val nemesis = calculateNemesis(stats.playerId, matches)
+            val pMatches = sortedMatches.filter { it.winnerId == stats.playerId || it.loserId == stats.playerId }
+            val wins = pMatches.count { it.winnerId == stats.playerId }
+            val losses = pMatches.count { it.loserId == stats.playerId }
+            val played = wins + losses
             
+            val winRate = if (played > 0) (wins.toDouble() / played * 100.0) else 0.0
+            val avgPoints = if (stats.asadosPlayed > 0) (stats.totalPoints.toDouble() / stats.asadosPlayed) else 0.0
+            
+            val bestVictim = h2hMap[stats.playerId]?.maxByOrNull { it.value.first }?.key
+            val nemesis = h2hMap[stats.playerId]?.maxByOrNull { it.value.second }?.key
+
             stats.copy(
+                played = played,
+                wins = wins,
+                losses = losses,
                 winRate = (winRate * 100.0).roundToInt() / 100.0,
+                averagePoints = (avgPoints * 100.0).roundToInt() / 100.0,
+                elo = currentElos[stats.playerId] ?: 1500,
                 bestVictimId = bestVictim,
                 nemesisId = nemesis
             )
-        }.sortedWith { p1, p2 ->
-            if (p1.wins != p2.wins) return@sortedWith p2.wins.compareTo(p1.wins)
-            if (p1.losses != p2.losses) return@sortedWith p1.losses.compareTo(p2.losses)
-            val h2h = calculateH2H(p1.playerId, p2.playerId, matches)
-            if (h2h != 0) return@sortedWith h2h
-            val diff1 = p1.goalsFor - p1.goalsAgainst
-            val diff2 = p2.goalsFor - p2.goalsAgainst
-            diff2.compareTo(diff1)
-        }
+        }.sortedByDescending { it.totalPoints }
     }
 
-    private fun calculateH2H(p1Id: String, p2Id: String, matches: List<Match>): Int {
-        var p1Wins = 0
-        var p2Wins = 0
-        matches.forEach { match ->
-            if (match.winnerId == p1Id && match.loserId == p2Id) p1Wins++
-            if (match.winnerId == p2Id && match.loserId == p1Id) p2Wins++
-        }
-        return p2Wins.compareTo(p1Wins)
+    private fun updateH2H(map: MutableMap<String, MutableMap<String, Pair<Int, Int>>>, winner: String, loser: String) {
+        // Winner perspective
+        val winnerDict = map.getOrPut(winner) { mutableMapOf() }
+        val currentW = winnerDict.getOrDefault(loser, 0 to 0)
+        winnerDict[loser] = (currentW.first + 1) to currentW.second
+
+        // Loser perspective
+        val loserDict = map.getOrPut(loser) { mutableMapOf() }
+        val currentL = loserDict.getOrDefault(winner, 0 to 0)
+        loserDict[winner] = currentL.first to (currentL.second + 1)
     }
 
-    private fun calculateBestVictim(playerId: String, matches: List<Match>): String? {
-        val victims = matches.filter { it.winnerId == playerId }.groupBy { it.loserId }
-        return victims.maxByOrNull { it.value.size }?.key
+    private fun calculateAsadoH2H(p1: String, p2: String, matches: List<Match>): Int {
+        val p1Wins = matches.count { it.winnerId == p1 && it.loserId == p2 }
+        val p2Wins = matches.count { it.winnerId == p2 && it.loserId == p1 }
+        return p2Wins.compareTo(p1Wins) // Negative if p1Wins > p2Wins (p1 is better)
     }
 
-    private fun calculateNemesis(playerId: String, matches: List<Match>): String? {
-        val nemeses = matches.filter { it.loserId == playerId }.groupBy { it.winnerId }
-        return nemeses.maxByOrNull { it.value.size }?.key
-    }
+    fun calculatePerAsadoRankings(asados: List<Asado>, matches: List<Match>): List<AsadoRanking> {
+        val sortedAsados = asados.sortedByDescending { it.date }
+        val matchesByAsado = matches.groupBy { it.asadoId }
 
-    fun calculateGlobalPoints(sortedStats: List<PlayerStats>): List<PlayerStats> {
-        val n = sortedStats.size
-        if (n <= 1) return sortedStats.map { it.copy(points = if (n == 1) 10 else 0) }
+        return sortedAsados.mapNotNull { asado ->
+            val asadoMatches = matchesByAsado[asado.id] ?: return@mapNotNull null
+            val participants = asado.playerIds.distinct()
+            
+            val asadoPlayerStats = participants.map { pid ->
+                val pWins = asadoMatches.count { it.winnerId == pid }
+                val pLosses = asadoMatches.count { it.loserId == pid }
+                pid to (pWins to pLosses)
+            }.toMap()
 
-        return sortedStats.mapIndexed { i, stats ->
-            val points = (10.0 - (9.0 * i) / (n - 1)).roundToInt().coerceAtLeast(1)
-            stats.copy(points = points)
+            val sortedParticipants = participants.sortedWith { p1, p2 ->
+                val stats1 = asadoPlayerStats[p1] ?: (0 to 0)
+                val stats2 = asadoPlayerStats[p2] ?: (0 to 0)
+                if (stats1.first != stats2.first) return@sortedWith stats2.first.compareTo(stats1.first)
+                if (stats1.second != stats2.second) return@sortedWith stats1.second.compareTo(stats2.second)
+                val h2h = calculateAsadoH2H(p1, p2, asadoMatches)
+                if (h2h != 0) return@sortedWith h2h
+                0
+            }
+
+            val n = sortedParticipants.size
+            val rankings = sortedParticipants.mapIndexed { i, pid ->
+                val stats = asadoPlayerStats[pid] ?: (0 to 0)
+                val points = if (n <= 1) 10 else {
+                    (10.0 - (9.0 * i) / (n - 1)).roundToInt().coerceAtLeast(1)
+                }
+                AsadoPlayerRank(pid, stats.first, stats.second, points, i)
+            }
+
+            AsadoRanking(asado.id, asado.date, rankings)
         }
     }
 }

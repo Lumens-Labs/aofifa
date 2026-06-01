@@ -5,15 +5,17 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.notifications.NotificationReceiver
+import com.example.myapplication.data.repository.AoRepository
+import com.example.myapplication.domain.model.Asado
 import com.example.myapplication.domain.model.Match
-import com.example.myapplication.domain.model.Player
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.*
 
-class AsadoViewModel : ViewModel() {
+class AsadoViewModel(private val repository: AoRepository) : ViewModel() {
 
     private val _liveMatches = MutableStateFlow<List<Match>>(emptyList())
     val liveMatches: StateFlow<List<Match>> = _liveMatches.asStateFlow()
@@ -21,10 +23,52 @@ class AsadoViewModel : ViewModel() {
     private val _currentAsadoId = MutableStateFlow<String?>(null)
     val currentAsadoId: StateFlow<String?> = _currentAsadoId.asStateFlow()
 
-    fun startAsado(context: Context) {
-        _currentAsadoId.value = UUID.randomUUID().toString()
-        _liveMatches.value = emptyList()
-        scheduleNotification(context)
+    private val _activeAsado = repository.activeAsado.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = null
+    )
+
+    init {
+        viewModelScope.launch {
+            _activeAsado.collect { asado ->
+                _currentAsadoId.value = asado?.id
+                if (asado != null) {
+                    repository.matches.collect { allMatches ->
+                        _liveMatches.value = allMatches.filter { it.asadoId == asado.id }
+                    }
+                } else {
+                    _liveMatches.value = emptyList()
+                }
+            }
+        }
+    }
+
+    fun startAsado(context: Context, date: String, playerIds: List<String>, comment: String?) {
+        val asadoId = UUID.randomUUID().toString()
+        val newAsado = Asado(
+            id = asadoId,
+            date = date,
+            playerIds = playerIds,
+            comment = comment,
+            isActive = true
+        )
+        
+        viewModelScope.launch {
+            repository.insertAsado(newAsado)
+            scheduleNotification(context)
+        }
+    }
+
+    fun finalizeAsado() {
+        val asadoId = _currentAsadoId.value ?: return
+        viewModelScope.launch {
+            _activeAsado.value?.let { current ->
+                if (current.id == asadoId) {
+                    repository.updateAsado(current.copy(isActive = false))
+                }
+            }
+        }
     }
 
     private fun scheduleNotification(context: Context) {
@@ -34,7 +78,6 @@ class AsadoViewModel : ViewModel() {
             context, 0, intent, PendingIntent.FLAG_IMMUTABLE
         )
         
-        // Schedule every 15 minutes
         alarmManager.setRepeating(
             AlarmManager.RTC_WAKEUP,
             System.currentTimeMillis() + 15 * 60 * 1000,
@@ -52,8 +95,12 @@ class AsadoViewModel : ViewModel() {
             loserId = loserId,
             winnerGoles = winnerGoles,
             loserGoles = loserGoles,
-            photoUrl = photoUrl
+            photoUrl = photoUrl,
+            createdAt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         )
-        _liveMatches.value = _liveMatches.value + newMatch
+        
+        viewModelScope.launch {
+            repository.insertMatch(newMatch)
+        }
     }
 }

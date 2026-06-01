@@ -12,7 +12,7 @@ class ViewModelFactory(private val repository: AoRepository) : ViewModelProvider
         }
         if (modelClass.isAssignableFrom(AsadoViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AsadoViewModel() as T
+            return AsadoViewModel(repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

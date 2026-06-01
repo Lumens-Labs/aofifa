@@ -6,24 +6,29 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.myapplication.ui.navigation.Screen
-import com.example.myapplication.ui.screens.AsadoScreen
-import com.example.myapplication.ui.screens.GlobalScreen
-import com.example.myapplication.ui.screens.H2HScreen
+import com.example.myapplication.ui.screens.*
+import com.example.myapplication.ui.theme.AoBlack
+import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.myapplication.ui.viewmodel.AsadoViewModel
 import com.example.myapplication.ui.viewmodel.MainViewModel
@@ -52,46 +57,122 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(mainViewModel: MainViewModel, asadoViewModel: AsadoViewModel) {
     val navController = rememberNavController()
-    val screens = listOf(Screen.Global, Screen.Asado, Screen.H2H)
+    val screens = listOf(
+        Screen.Asado,
+        Screen.Stats,
+        Screen.Players,
+        Screen.Sync,
+        Screen.Help
+    )
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-                screens.forEach { screen ->
-                    NavigationBarItem(
-                        icon = { 
-                            when(screen) {
-                                Screen.Global -> Icon(Icons.Default.Home, contentDescription = null)
-                                Screen.Asado -> Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
-                                Screen.H2H -> Icon(Icons.Default.Person, contentDescription = null)
-                            }
-                        },
-                        label = { Text(screen.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentDestination = navBackStackEntry?.destination
+            
+            // Only show bottom bar on top level screens
+            val showBottomBar = screens.any { it.route == currentDestination?.route }
+            
+            if (showBottomBar) {
+                NavigationBar(
+                    containerColor = AoBlack,
+                    contentColor = Color.White,
+                    tonalElevation = 8.dp
+                ) {
+                    screens.forEach { screen ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                        NavigationBarItem(
+                            icon = { 
+                                val icon = when(screen) {
+                                    Screen.Asado -> Icons.Default.DateRange
+                                    Screen.Stats -> Icons.Default.Info
+                                    Screen.Players -> Icons.Default.Person
+                                    Screen.Sync -> Icons.Default.Refresh
+                                    Screen.Help -> Icons.AutoMirrored.Filled.Help
+                                    Screen.MatchDetails -> Icons.AutoMirrored.Filled.List
+                                    Screen.ActiveAsado -> Icons.Default.Star
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
+                                Icon(
+                                    icon, 
+                                    contentDescription = null,
+                                    tint = if (selected) Color.White else Color.Gray
+                                )
+                            },
+                            label = { 
+                                Text(
+                                    screen.title, 
+                                    fontSize = 10.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White else Color.Gray
+                                ) 
+                            },
+                            selected = selected,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color.White,
+                                selectedTextColor = Color.White,
+                                unselectedIconColor = Color.Gray,
+                                unselectedTextColor = Color.Gray,
+                                indicatorColor = AoOrange.copy(alpha = 0.2f)
+                            )
+                        )
+                    }
                 }
             }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Global.route,
+            startDestination = Screen.Asado.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Global.route) { GlobalScreen(mainViewModel) }
-            composable(Screen.Asado.route) { AsadoScreen(mainViewModel, asadoViewModel) }
-            composable(Screen.H2H.route) { H2HScreen(mainViewModel) }
+            composable(Screen.Asado.route) { 
+                AsadoScreen(
+                    mainViewModel = mainViewModel, 
+                    asadoViewModel = asadoViewModel,
+                    onAsadoClick = { asadoId ->
+                        navController.navigate(Screen.MatchDetails.createRoute(asadoId))
+                    },
+                    onActiveAsadoClick = { asadoId ->
+                        navController.navigate(Screen.ActiveAsado.createRoute(asadoId))
+                    }
+                ) 
+            }
+            composable(Screen.Stats.route) { StatsScreen(mainViewModel) }
+            composable(Screen.Players.route) { PlayersScreen(mainViewModel) }
+            composable(Screen.Sync.route) { SyncScreen(mainViewModel) }
+            composable(Screen.Help.route) { HelpScreen() }
+            
+            composable(
+                route = Screen.MatchDetails.route,
+                arguments = listOf(navArgument("asadoId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val asadoId = backStackEntry.arguments?.getString("asadoId") ?: ""
+                MatchDetailsScreen(asadoId = asadoId, viewModel = mainViewModel)
+            }
+
+            composable(
+                route = Screen.ActiveAsado.route,
+                arguments = listOf(navArgument("asadoId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val asadoId = backStackEntry.arguments?.getString("asadoId") ?: ""
+                ActiveAsadoScreen(
+                    asadoId = asadoId,
+                    mainViewModel = mainViewModel,
+                    asadoViewModel = asadoViewModel,
+                    onNavigateBack = { 
+                        navController.popBackStack(Screen.Asado.route, false)
+                    }
+                )
+            }
         }
     }
 }

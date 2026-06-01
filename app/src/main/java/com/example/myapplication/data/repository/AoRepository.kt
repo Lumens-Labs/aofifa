@@ -29,6 +29,8 @@ class AoRepository(
         entities.map { it.toDomain() }
     }
 
+    val activeAsado: Flow<Asado?> = db.asadoDao().getActiveAsado().map { it?.toDomain() }
+
     val snapshot: Flow<Snapshot> = combine(players, matches, asados) { p, m, a ->
         Snapshot(p, a, m, SnapshotMetadata("1.0.0"))
     }
@@ -47,6 +49,17 @@ class AoRepository(
 
     suspend fun syncSnapshot(snapshot: Snapshot) {
         api.postSnapshot(snapshot)
-        // Optionally update local DB after successful post
+    }
+
+    suspend fun insertAsado(asado: Asado) {
+        db.asadoDao().insertAsados(listOf(asado.toEntity()))
+    }
+
+    suspend fun updateAsado(asado: Asado) {
+        db.asadoDao().updateAsado(asado.toEntity())
+    }
+
+    suspend fun insertMatch(match: Match) {
+        db.matchDao().insertMatches(listOf(match.toEntity()))
     }
 }

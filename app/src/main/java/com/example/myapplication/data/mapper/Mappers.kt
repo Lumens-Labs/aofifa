@@ -14,8 +14,8 @@ fun MatchEntity.toDomain() = Match(id, asadoId, winnerId, loserId, winnerGoles, 
 fun Match.toEntity() = MatchEntity(id, asadoId, winnerId, loserId, winnerGoles, loserGoles, photoUrl, createdAt)
 
 fun AsadoEntity.toDomain() = Asado(
-    id, date, playerIds.split(",").filter { it.isNotBlank() }, comment
+    id, date, playerIds.split(",").filter { it.isNotBlank() }, comment, isActive
 )
 fun Asado.toEntity() = AsadoEntity(
-    id, date, playerIds.joinToString(","), comment
+    id, date, playerIds.joinToString(","), comment, isActive
 )
