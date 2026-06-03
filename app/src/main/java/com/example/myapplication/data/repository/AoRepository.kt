@@ -69,8 +69,13 @@ class AoRepository(
 
     suspend fun getRemoteTeams() = try {
         val response = api.getTeams()
-        response.teams.map { 
-            it.copy(logoUrl = "https://nejca.com.ar${it.logoUrl}")
+        response.teams.map { team ->
+            val finalUrl = if (team.logoUrl.startsWith("http")) {
+                team.logoUrl
+            } else {
+                "https://nejca.com.ar${team.logoUrl}"
+            }
+            team.copy(logoUrl = finalUrl)
         }
     } catch (e: Exception) {
         emptyList()

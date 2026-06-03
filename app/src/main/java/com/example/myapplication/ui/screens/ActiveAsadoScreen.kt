@@ -34,7 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.remote.CloudinaryManager
-import com.example.myapplication.domain.model.Player
+import com.example.myapplication.domain.model.*
 import com.example.myapplication.ui.components.PlayerAvatar
 import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.theme.PlayerIcons
@@ -97,196 +97,226 @@ fun ActiveAsadoScreen(
         } else {
             Scaffold(
                 topBar = {
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Asado Activo",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = AoOrange,
-                                    fontWeight = FontWeight.Bold
+                    Surface(
+                        tonalElevation = 4.dp,
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .statusBarsPadding()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Asado Activo",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = AoOrange,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                    Text(
+                                        text = asado.date,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                    )
+                                }
+                                IconButton(onClick = { showFinalizeDialog = true }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Finalizar Asado", tint = AoOrange)
+                                }
+                            }
+                            
+                            TabRow(
+                                selectedTabIndex = selectedTab,
+                                containerColor = Color.Transparent,
+                                contentColor = AoOrange,
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                        color = AoOrange
+                                    )
+                                },
+                                divider = {}
+                            ) {
+                                Tab(
+                                    selected = selectedTab == 0,
+                                    onClick = { selectedTab = 0 },
+                                    text = { Text("Cargar", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                 )
-                                Text(
-                                    text = asado.date,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                Tab(
+                                    selected = selectedTab == 1,
+                                    onClick = { selectedTab = 1 },
+                                    text = { Text("Partidos (${liveMatches.size})", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                                )
+                                Tab(
+                                    selected = selectedTab == 2,
+                                    onClick = { selectedTab = 2 },
+                                    text = { Text("Torneo", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                 )
                             }
-                            IconButton(onClick = { showFinalizeDialog = true }) {
-                                Icon(Icons.Default.Close, contentDescription = "Finalizar Asado", tint = AoOrange)
-                            }
-                        }
-                        
-                        TabRow(
-                            selectedTabIndex = selectedTab,
-                            containerColor = Color.Transparent,
-                            contentColor = AoOrange,
-                            indicator = { tabPositions ->
-                                TabRowDefaults.SecondaryIndicator(
-                                    Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                    color = AoOrange
-                                )
-                            }
-                        ) {
-                            Tab(
-                                selected = selectedTab == 0,
-                                onClick = { selectedTab = 0 },
-                                text = { Text("Nuevo Resultado") }
-                            )
-                            Tab(
-                                selected = selectedTab == 1,
-                                onClick = { selectedTab = 1 },
-                                text = { Text("Partidos (${liveMatches.size})") }
-                            )
                         }
                     }
                 }
             ) { padding ->
-                if (selectedTab == 0) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(padding)
-                            .padding(horizontal = 16.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Seleccionar Ganador:",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        PlayerGrid(
-                            players = participatingPlayers,
-                            selectedId = winnerId,
-                            onPlayerSelected = { winnerId = it },
-                            disabledId = loserId
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Seleccionar Perdedor:",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        PlayerGrid(
-                            players = participatingPlayers,
-                            selectedId = loserId,
-                            onPlayerSelected = { loserId = it },
-                            disabledId = winnerId
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Resultado (Goles):",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value = winnerGoles,
-                                onValueChange = { if (it.length <= 2) winnerGoles = it },
-                                label = { Text("Ganador") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true
-                            )
-                            Text("vs", fontWeight = FontWeight.Bold)
-                            OutlinedTextField(
-                                value = loserGoles,
-                                onValueChange = { if (it.length <= 2) loserGoles = it },
-                                label = { Text("Perdedor") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        if (isUploading) {
-                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = AoOrange)
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Box(modifier = Modifier.padding(padding)) {
+                    when (selectedTab) {
+                        0 -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp)
+                                    .verticalScroll(rememberScrollState())
                             ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        asadoViewModel.addMatch(
-                                            winnerId!!,
-                                            loserId!!,
-                                            winnerGoles.toIntOrNull() ?: 1,
-                                            loserGoles.toIntOrNull() ?: 0,
-                                            null
-                                        )
-                                        winnerId = null
-                                        loserId = null
-                                        winnerGoles = "1"
-                                        loserGoles = "0"
-                                        Toast.makeText(context, "Resultado guardado (sin foto)", Toast.LENGTH_SHORT).show()
-                                    },
-                                    enabled = winnerId != null && loserId != null,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(56.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AoOrange),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, AoOrange),
-                                    shape = MaterialTheme.shapes.medium
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    text = "Seleccionar Ganador:",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                PlayerGrid(
+                                    players = participatingPlayers,
+                                    selectedId = winnerId,
+                                    onPlayerSelected = { winnerId = it },
+                                    disabledId = loserId
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    text = "Seleccionar Perdedor:",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                PlayerGrid(
+                                    players = participatingPlayers,
+                                    selectedId = loserId,
+                                    onPlayerSelected = { loserId = it },
+                                    disabledId = winnerId
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    text = "Resultado (Goles):",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Sin Foto", fontWeight = FontWeight.Bold)
+                                    OutlinedTextField(
+                                        value = winnerGoles,
+                                        onValueChange = { if (it.length <= 2) winnerGoles = it },
+                                        label = { Text("Ganador") },
+                                        modifier = Modifier.weight(1f),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        singleLine = true
+                                    )
+                                    Text("vs", fontWeight = FontWeight.Bold)
+                                    OutlinedTextField(
+                                        value = loserGoles,
+                                        onValueChange = { if (it.length <= 2) loserGoles = it },
+                                        label = { Text("Perdedor") },
+                                        modifier = Modifier.weight(1f),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        singleLine = true
+                                    )
                                 }
 
-                                Button(
-                                    onClick = { showCamera = true },
-                                    enabled = winnerId != null && loserId != null,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(56.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = AoOrange),
-                                    shape = MaterialTheme.shapes.medium
-                                ) {
-                                    Text("Con Foto", fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                if (isUploading) {
+                                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator(color = AoOrange)
+                                    }
+                                } else {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                asadoViewModel.addMatch(
+                                                    winnerId!!,
+                                                    loserId!!,
+                                                    winnerGoles.toIntOrNull() ?: 1,
+                                                    loserGoles.toIntOrNull() ?: 0,
+                                                    null
+                                                )
+                                                winnerId = null
+                                                loserId = null
+                                                winnerGoles = "1"
+                                                loserGoles = "0"
+                                                Toast.makeText(context, "Resultado guardado (sin foto)", Toast.LENGTH_SHORT).show()
+                                            },
+                                            enabled = winnerId != null && loserId != null,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(56.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AoOrange),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, AoOrange),
+                                            shape = MaterialTheme.shapes.medium
+                                        ) {
+                                            Text("Sin Foto", fontWeight = FontWeight.Bold)
+                                        }
+
+                                        Button(
+                                            onClick = { showCamera = true },
+                                            enabled = winnerId != null && loserId != null,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(56.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = AoOrange),
+                                            shape = MaterialTheme.shapes.medium
+                                        ) {
+                                            Text("Con Foto", fontWeight = FontWeight.Bold)
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                } else {
-                    val playersMap = data.players.associateBy { it.id }
-                    
-                    if (liveMatches.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "No hay partidos registrados aún.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(padding)
-                                .padding(16.dp),
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            items(liveMatches.reversed()) { match ->
-                                MatchItem(match = match, playersMap = playersMap)
+                        1 -> {
+                            val playersMap = data.players.associateBy { it.id }
+                            
+                            if (liveMatches.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "No hay partidos registrados aún.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                                    )
+                                }
+                            } else {
+                                LazyColumn(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                    contentPadding = PaddingValues(bottom = 16.dp)
+                                ) {
+                                    items(liveMatches.reversed()) { match ->
+                                        MatchItem(match = match, playersMap = playersMap)
+                                    }
+                                }
                             }
+                        }
+                        2 -> {
+                            TournamentTab(
+                                asado = asado,
+                                allPlayers = data.players,
+                                liveMatches = liveMatches,
+                                viewModel = asadoViewModel,
+                                onQuickRegister = { w, l ->
+                                    winnerId = w
+                                    loserId = l
+                                    selectedTab = 0
+                                }
+                            )
                         }
                     }
                 }
@@ -386,5 +416,184 @@ fun PlayerGrid(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun TournamentTab(
+    asado: Asado,
+    allPlayers: List<Player>,
+    liveMatches: List<Match>,
+    viewModel: AsadoViewModel,
+    modifier: Modifier = Modifier,
+    onQuickRegister: (String, String) -> Unit
+) {
+    val config = asado.tournamentConfig ?: TournamentConfig()
+    val participants = config.participants
+    
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = "Participantes Presentes",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "Marca quiénes están jugando ahora mismo.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Presence Selector
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val asadoPlayers = allPlayers.filter { asado.playerIds.contains(it.id) }
+            asadoPlayers.forEach { player ->
+                val isPresent = participants.contains(player.id)
+                FilterChip(
+                    selected = isPresent,
+                    onClick = { viewModel.toggleParticipant(player.id) },
+                    label = { Text(player.name) },
+                    leadingIcon = {
+                        PlayerAvatar(player.id, player.avatarUrl, Modifier.size(18.dp).clip(CircleShape))
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        if (config.status == TournamentStatus.NOT_STARTED) {
+            TournamentLauncher(participants.size, onStart = { viewModel.startTournament(it) })
+        } else {
+            TournamentStatusView(config, allPlayers, liveMatches, onQuickRegister)
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Button(
+                onClick = { viewModel.startTournament(TournamentMode.NONE) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Reiniciar Torneo")
+            }
+        }
+    }
+}
+
+@Composable
+fun TournamentLauncher(participantCount: Int, onStart: (TournamentMode) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = AoOrange.copy(alpha = 0.1f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "Modos Sugeridos", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            if (participantCount == 3) {
+                Button(onClick = { onStart(TournamentMode.WINNER_STAYS) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Ganador Queda (3 Jugadores)")
+                }
+            } else if (participantCount >= 4) {
+                Button(onClick = { onStart(TournamentMode.LEAGUE) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Armar Liga (Todos vs Todos)")
+                }
+            } else {
+                Text("Necesitas al menos 2 participantes marcados como presentes.", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+fun TournamentStatusView(
+    config: TournamentConfig,
+    allPlayers: List<Player>,
+    liveMatches: List<Match>,
+    onQuickRegister: (String, String) -> Unit
+) {
+    val playersMap = allPlayers.associateBy { it.id }
+
+    when (config.mode) {
+        TournamentMode.WINNER_STAYS -> {
+            config.winnerStaysConfig?.let { ws ->
+                val winner = playersMap[ws.currentWinnerId]
+                val challenger = playersMap[ws.nextChallengerId]
+                
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("PRÓXIMO ENCUENTRO", style = MaterialTheme.typography.labelLarge, color = AoOrange)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            PlayerVSCard(winner)
+                            Text(" VS ", fontWeight = FontWeight.Black)
+                            PlayerVSCard(challenger)
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { onQuickRegister(ws.currentWinnerId!!, ws.nextChallengerId!!) }) {
+                            Text("Cargar Resultado")
+                        }
+                    }
+                }
+                
+                if (ws.queue.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("En espera: " + ws.queue.map { playersMap[it]?.name ?: "" }.joinToString(", "))
+                }
+            }
+        }
+        TournamentMode.LEAGUE -> {
+            val table = com.example.myapplication.domain.logic.TournamentEngine.calculateLeagueTable(
+                config.participants, liveMatches, emptyList()
+            )
+            
+            Text("Tabla de la Liga", fontWeight = FontWeight.Bold)
+            table.forEach { rank ->
+                val p = playersMap[rank.playerId]
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("#${rank.position + 1}", modifier = Modifier.width(30.dp))
+                    Text(p?.name ?: "???", modifier = Modifier.weight(1f))
+                    Text("${rank.points} pts", fontWeight = FontWeight.Bold)
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            val nextMatch = config.leagueConfig?.fixtures?.find { it.status == MatchStatus.PENDING }
+            if (nextMatch != null) {
+                val p1 = playersMap[nextMatch.player1Id]
+                val p2 = playersMap[nextMatch.player2Id]
+                
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("SIGUIENTE PARTIDO", color = AoOrange)
+                        Text("${p1?.name} vs ${p2?.name}", fontWeight = FontWeight.Bold)
+                        Button(onClick = { onQuickRegister(nextMatch.player1Id, nextMatch.player2Id) }) {
+                            Text("Jugar")
+                        }
+                    }
+                }
+            }
+        }
+        else -> {}
+    }
+}
+
+@Composable
+fun PlayerVSCard(player: Player?) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        PlayerAvatar(player?.id ?: "", player?.avatarUrl, Modifier.size(60.dp).clip(CircleShape))
+        Text(player?.name ?: "???", fontWeight = FontWeight.Bold)
     }
 }

@@ -11,7 +11,7 @@ import com.example.myapplication.data.local.entity.PlayerEntity
 
 @Database(
     entities = [PlayerEntity::class, AsadoEntity::class, MatchEntity::class],
-    version = 5, // Updated for nullable fields in all entities
+    version = 6, // Added tournamentConfigJson to AsadoEntity
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

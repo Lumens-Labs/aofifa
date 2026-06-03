@@ -9,5 +9,6 @@ data class AsadoEntity(
     val date: String,
     val playerIds: String,
     val comment: String?,
-    val isActive: Boolean? = false
+    val isActive: Boolean? = false,
+    val tournamentConfigJson: String? = null
 )

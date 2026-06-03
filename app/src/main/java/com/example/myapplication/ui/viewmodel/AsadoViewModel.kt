@@ -8,8 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.notifications.NotificationReceiver
 import com.example.myapplication.data.repository.AoRepository
-import com.example.myapplication.domain.model.Asado
-import com.example.myapplication.domain.model.Match
+import com.example.myapplication.domain.logic.TournamentEngine
+import com.example.myapplication.domain.model.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -28,6 +28,7 @@ class AsadoViewModel(private val repository: AoRepository) : ViewModel() {
         started = SharingStarted.Eagerly,
         initialValue = null
     )
+    val activeAsado: StateFlow<Asado?> = _activeAsado
 
     init {
         viewModelScope.launch {
@@ -51,12 +52,57 @@ class AsadoViewModel(private val repository: AoRepository) : ViewModel() {
             date = date,
             playerIds = playerIds,
             comment = comment,
-            isActive = true
+            isActive = true,
+            tournamentConfig = TournamentConfig(participants = playerIds)
         )
         
         viewModelScope.launch {
             repository.insertAsado(newAsado)
             scheduleNotification(context)
+        }
+    }
+
+    fun toggleParticipant(playerId: String) {
+        val current = _activeAsado.value ?: return
+        val config = current.tournamentConfig ?: TournamentConfig()
+        val participants = config.participants.toMutableList()
+        
+        if (participants.contains(playerId)) {
+            participants.remove(playerId)
+        } else {
+            participants.add(playerId)
+        }
+        
+        viewModelScope.launch {
+            repository.updateAsado(current.copy(
+                tournamentConfig = config.copy(participants = participants)
+            ))
+        }
+    }
+
+    fun startTournament(mode: TournamentMode) {
+        val current = _activeAsado.value ?: return
+        val participants = current.tournamentConfig?.participants ?: emptyList()
+        if (participants.size < 2) return
+
+        val newConfig = when (mode) {
+            TournamentMode.WINNER_STAYS -> TournamentConfig(
+                mode = mode,
+                status = TournamentStatus.IN_PROGRESS,
+                participants = participants,
+                winnerStaysConfig = TournamentEngine.generateInitialWinnerStays(participants)
+            )
+            TournamentMode.LEAGUE -> TournamentConfig(
+                mode = mode,
+                status = TournamentStatus.IN_PROGRESS,
+                participants = participants,
+                leagueConfig = TournamentEngine.generateInitialLeague(participants)
+            )
+            else -> TournamentConfig(participants = participants)
+        }
+
+        viewModelScope.launch {
+            repository.updateAsado(current.copy(tournamentConfig = newConfig))
         }
     }
 
@@ -88,6 +134,8 @@ class AsadoViewModel(private val repository: AoRepository) : ViewModel() {
 
     fun addMatch(winnerId: String, loserId: String, winnerGoles: Int, loserGoles: Int, photoUrl: String?) {
         val asadoId = _currentAsadoId.value ?: return
+        val currentAsado = _activeAsado.value ?: return
+        
         val newMatch = Match(
             id = UUID.randomUUID().toString(),
             asadoId = asadoId,
@@ -101,6 +149,31 @@ class AsadoViewModel(private val repository: AoRepository) : ViewModel() {
         
         viewModelScope.launch {
             repository.insertMatch(newMatch)
+            
+            // Update Tournament State
+            val config = currentAsado.tournamentConfig
+            if (config != null && config.status == TournamentStatus.IN_PROGRESS) {
+                val updatedConfig = when (config.mode) {
+                    TournamentMode.WINNER_STAYS -> {
+                        config.winnerStaysConfig?.let { ws ->
+                            config.copy(winnerStaysConfig = TournamentEngine.rotateWinnerStays(
+                                ws, winnerId, loserId, config.participants
+                            ))
+                        } ?: config
+                    }
+                    TournamentMode.LEAGUE -> {
+                        val updatedFixtures = config.leagueConfig?.fixtures?.map { f ->
+                            if ((f.player1Id == winnerId && f.player2Id == loserId) ||
+                                (f.player1Id == loserId && f.player2Id == winnerId)) {
+                                f.copy(status = MatchStatus.COMPLETED)
+                            } else f
+                        }
+                        config.copy(leagueConfig = LeagueConfig(updatedFixtures ?: emptyList()))
+                    }
+                    else -> config
+                }
+                repository.updateAsado(currentAsado.copy(tournamentConfig = updatedConfig))
+            }
         }
     }
 }
