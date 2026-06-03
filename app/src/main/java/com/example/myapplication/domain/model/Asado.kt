@@ -7,5 +7,5 @@ data class Asado(
     @SerializedName("date") val date: String,
     @SerializedName("playerIds", alternate = ["player_ids"]) val playerIds: List<String>,
     @SerializedName("comment") val comment: String? = null,
-    @SerializedName("isActive") val isActive: Boolean = false
+    @SerializedName("isActive", alternate = ["is_active"]) val isActive: Boolean? = false
 )

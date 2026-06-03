@@ -11,4 +11,19 @@ interface AoApiService {
 
     @POST("api/ao")
     suspend fun postSnapshot(@Body snapshot: Snapshot)
+
+    @GET("api/ao/teams")
+    suspend fun getTeams(): TeamResponse
 }
+
+data class TeamResponse(
+    val status: String,
+    val count: Int,
+    val teams: List<TeamBadge>
+)
+
+data class TeamBadge(
+    val id: String,
+    val name: String,
+    val logoUrl: String
+)

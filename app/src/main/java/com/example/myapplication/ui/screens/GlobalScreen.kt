@@ -18,11 +18,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import androidx.core.graphics.toColorInt
 import com.example.myapplication.domain.logic.RankingEngine
 import com.example.myapplication.domain.model.Player
+import com.example.myapplication.ui.components.PlayerAvatar
 import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.theme.PlayerIcons
 import com.example.myapplication.ui.viewmodel.MainViewModel
@@ -32,11 +35,25 @@ fun GlobalScreen(viewModel: MainViewModel) {
     val snapshot by viewModel.snapshot.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val error by viewModel.error.collectAsState()
+    val loading by viewModel.loading.collectAsState()
+    val success by viewModel.success.collectAsState()
+
+    var showDownloadConfirm by remember { mutableStateOf(false) }
+    var showUploadConfirm by remember { mutableStateOf(false) }
+    var uploadPassword by remember { mutableStateOf("") }
+    var passwordError by remember { mutableStateOf(false) }
 
     LaunchedEffect(error) {
         error?.let {
             android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show()
             viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(success) {
+        success?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.clearSuccess()
         }
     }
 
@@ -78,7 +95,7 @@ fun GlobalScreen(viewModel: MainViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
-                        onClick = { viewModel.refreshData() },
+                        onClick = { showDownloadConfirm = true },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
@@ -87,7 +104,7 @@ fun GlobalScreen(viewModel: MainViewModel) {
                         Text("Bajar Datos")
                     }
                     Button(
-                        onClick = { viewModel.uploadData() },
+                        onClick = { showUploadConfirm = true },
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Default.KeyboardArrowUp, contentDescription = null)
@@ -131,6 +148,98 @@ fun GlobalScreen(viewModel: MainViewModel) {
     } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator()
     }
+
+    if (loading) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = {}) {
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = AoOrange)
+            }
+        }
+    }
+
+    if (showDownloadConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDownloadConfirm = false },
+            title = { Text("¿Bajar Datos?") },
+            text = { Text("Se sobreescribirán todos los datos locales con la versión de la nube. Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.refreshData()
+                    showDownloadConfirm = false
+                }) {
+                    Text("Bajar", color = AoOrange)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDownloadConfirm = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showUploadConfirm) {
+        AlertDialog(
+            onDismissRequest = { 
+                showUploadConfirm = false
+                uploadPassword = ""
+                passwordError = false
+            },
+            title = { Text("Subir Datos a la Nube") },
+            text = {
+                Column {
+                    Text("Ingresa la contraseña para confirmar la subida. Esto actualizará el servidor con tus datos locales.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = uploadPassword,
+                        onValueChange = { 
+                            uploadPassword = it
+                            passwordError = false
+                        },
+                        label = { Text("Contraseña") },
+                        isError = passwordError,
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true
+                    )
+                    if (passwordError) {
+                        Text(
+                            text = "Contraseña incorrecta",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (uploadPassword == "mumbongopro") {
+                        viewModel.uploadData()
+                        showUploadConfirm = false
+                        uploadPassword = ""
+                    } else {
+                        passwordError = true
+                    }
+                }) {
+                    Text("Confirmar Subida", color = AoOrange)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showUploadConfirm = false
+                    uploadPassword = ""
+                    passwordError = false
+                }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -142,11 +251,10 @@ fun MvpCard(player: Player, stats: com.example.myapplication.domain.logic.Player
         colors = CardDefaults.cardColors(containerColor = playerColor.copy(alpha = 0.2f))
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(id = PlayerIcons.getAvatar(player.id)),
-                contentDescription = null,
-                modifier = Modifier.size(64.dp).clip(CircleShape).background(playerColor.copy(alpha = 0.4f)),
-                contentScale = ContentScale.Crop
+            PlayerAvatar(
+                playerId = player.id,
+                avatarUrl = player.avatarUrl,
+                modifier = Modifier.size(64.dp).clip(CircleShape).background(playerColor.copy(alpha = 0.4f))
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
@@ -170,11 +278,10 @@ fun PlayerCard(rank: Int, player: Player, stats: com.example.myapplication.domai
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = "#$rank", fontWeight = FontWeight.Bold, modifier = Modifier.width(40.dp))
-            Image(
-                painter = painterResource(id = PlayerIcons.getAvatar(player.id)),
-                contentDescription = null,
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(playerColor.copy(alpha = 0.2f)),
-                contentScale = ContentScale.Crop
+            PlayerAvatar(
+                playerId = player.id,
+                avatarUrl = player.avatarUrl,
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(playerColor.copy(alpha = 0.2f))
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {

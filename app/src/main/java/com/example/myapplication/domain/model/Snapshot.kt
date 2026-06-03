@@ -10,7 +10,7 @@ data class Snapshot(
 )
 
 data class SnapshotMetadata(
-    val version: String, // Was Int, backend sends "1.0.0"
+    val version: String,
     @SerializedName("exportedAt") val exportedAt: String? = null,
     @SerializedName("serverReceivedAt") val serverReceivedAt: String? = null,
     @SerializedName("snapshotId") val snapshotId: String? = null

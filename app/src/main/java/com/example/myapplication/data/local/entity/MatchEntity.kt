@@ -9,8 +9,8 @@ data class MatchEntity(
     val asadoId: String,
     val winnerId: String,
     val loserId: String,
-    val winnerGoles: Int,
-    val loserGoles: Int,
+    val winnerGoles: Int?,
+    val loserGoles: Int?,
     val photoUrl: String?,
     val createdAt: String?
 )

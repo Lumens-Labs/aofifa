@@ -1,33 +1,48 @@
 package com.example.myapplication.ui.screens
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.myapplication.domain.model.Player
+import com.example.myapplication.ui.components.PlayerAvatar
 import com.example.myapplication.ui.theme.AoOrange
+import com.example.myapplication.ui.theme.PlayerIcons
 import com.example.myapplication.ui.viewmodel.MainViewModel
 
 @Composable
 fun PlayersScreen(viewModel: MainViewModel) {
     val snapshot by viewModel.snapshot.collectAsState()
+    var selectedPlayerForBadge by remember { mutableStateOf<Player?>(null) }
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { /* TODO: Add Player */ },
                 containerColor = AoOrange,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Añadir Jugador")
             }
@@ -43,7 +58,7 @@ fun PlayersScreen(viewModel: MainViewModel) {
                 text = "Jugadores",
                 style = MaterialTheme.typography.headlineMedium,
                 color = AoOrange,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
@@ -52,7 +67,7 @@ fun PlayersScreen(viewModel: MainViewModel) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(data.players) { player ->
-                        PlayerItem(player)
+                        PlayerItem(player, onBadgeClick = { selectedPlayerForBadge = it })
                     }
                 }
             } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -60,29 +75,159 @@ fun PlayersScreen(viewModel: MainViewModel) {
             }
         }
     }
+
+    if (selectedPlayerForBadge != null) {
+        BadgeSelectionDialog(
+            viewModel = viewModel,
+            onDismiss = { selectedPlayerForBadge = null },
+            onBadgeSelected = { badgeName ->
+                selectedPlayerForBadge?.let { player ->
+                    viewModel.updatePlayerBadge(player, badgeName)
+                }
+                selectedPlayerForBadge = null
+            }
+        )
+    }
 }
 
 @Composable
-fun PlayerItem(player: Player) {
+fun PlayerItem(player: Player, onBadgeClick: (Player) -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onBadgeClick(player) },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = MaterialTheme.shapes.medium
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = player.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+            PlayerAvatar(
+                playerId = player.id,
+                avatarUrl = player.avatarUrl,
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(AoOrange.copy(alpha = 0.1f))
             )
-            Text(
-                text = "Registrado: 2026-03-03", // Example date like in screenshot
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column {
+                Text(
+                    text = player.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "ELO: ${player.elo}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
         }
     }
+}
+
+@Composable
+fun BadgeSelectionDialog(
+    viewModel: MainViewModel,
+    onDismiss: () -> Unit,
+    onBadgeSelected: (String) -> Unit
+) {
+    val remoteTeams by viewModel.remoteTeams.collectAsState()
+    var selectedTab by remember { mutableIntStateOf(0) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Elegir Escudo") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.Transparent,
+                    contentColor = AoOrange,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = AoOrange
+                        )
+                    }
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Local", fontSize = 12.sp) }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("Cloud (${remoteTeams.size})", fontSize = 12.sp) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(modifier = Modifier.height(300.dp)) {
+                    if (selectedTab == 0) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(4),
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(PlayerIcons.DRAWABLE_BADGES) { badgeName ->
+                                val context = LocalContext.current
+                                val resId = context.resources.getIdentifier(badgeName, "drawable", context.packageName)
+                                
+                                if (resId != 0) {
+                                    Image(
+                                        painter = painterResource(id = resId),
+                                        contentDescription = badgeName,
+                                        modifier = Modifier
+                                            .size(60.dp)
+                                            .clip(CircleShape)
+                                            .clickable { onBadgeSelected(badgeName) }
+                                            .padding(4.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        if (remoteTeams.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = AoOrange)
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(4),
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(remoteTeams) { team ->
+                                    AsyncImage(
+                                        model = team.logoUrl,
+                                        contentDescription = team.name,
+                                        modifier = Modifier
+                                            .size(60.dp)
+                                            .clip(CircleShape)
+                                            .clickable { onBadgeSelected(team.logoUrl) }
+                                            .padding(4.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
 }

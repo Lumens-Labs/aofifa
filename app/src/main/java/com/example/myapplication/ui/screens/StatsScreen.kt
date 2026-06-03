@@ -22,6 +22,7 @@ import com.example.myapplication.domain.logic.AsadoRanking
 import com.example.myapplication.domain.logic.PlayerStats
 import com.example.myapplication.domain.logic.RankingEngine
 import com.example.myapplication.domain.model.Player
+import com.example.myapplication.ui.components.PlayerAvatar
 import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.theme.PlayerIcons
 import com.example.myapplication.ui.viewmodel.MainViewModel
@@ -152,11 +153,10 @@ fun AsadoRankingCard(ranking: AsadoRanking, players: List<Player>) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(text = "#${rank.position + 1}", modifier = Modifier.width(32.dp), fontWeight = FontWeight.Bold)
-                    Image(
-                        painter = painterResource(id = PlayerIcons.getAvatar(rank.playerId)),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp).clip(CircleShape),
-                        contentScale = ContentScale.Crop
+                    PlayerAvatar(
+                        playerId = rank.playerId,
+                        avatarUrl = player?.avatarUrl,
+                        modifier = Modifier.size(24.dp).clip(CircleShape)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = player?.name ?: "???", modifier = Modifier.weight(1f))
@@ -177,11 +177,10 @@ fun H2HDetailCard(player: Player, stats: PlayerStats, allPlayers: List<Player>) 
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(id = PlayerIcons.getAvatar(player.id)),
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(AoOrange.copy(alpha = 0.2f)),
-                    contentScale = ContentScale.Crop
+                PlayerAvatar(
+                    playerId = player.id,
+                    avatarUrl = player.avatarUrl,
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(AoOrange.copy(alpha = 0.2f))
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(text = player.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -214,11 +213,10 @@ fun H2HItem(label: String, opponentId: String?, players: List<Player>, color: Co
         Text(text = label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
         if (opponent != null) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                Image(
-                    painter = painterResource(id = PlayerIcons.getAvatar(opponent.id)),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp).clip(CircleShape),
-                    contentScale = ContentScale.Crop
+                PlayerAvatar(
+                    playerId = opponent.id,
+                    avatarUrl = opponent.avatarUrl,
+                    modifier = Modifier.size(20.dp).clip(CircleShape)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(text = opponent.name, fontWeight = FontWeight.Bold, color = color.copy(alpha = 0.8f))
@@ -247,11 +245,10 @@ fun StatsPlayerCard(player: Player, stats: PlayerStats) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(id = PlayerIcons.getAvatar(stats.playerId)),
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp).clip(CircleShape).background(AoOrange.copy(alpha = 0.2f)),
-                    contentScale = ContentScale.Crop
+                PlayerAvatar(
+                    playerId = stats.playerId,
+                    avatarUrl = player.avatarUrl,
+                    modifier = Modifier.size(48.dp).clip(CircleShape).background(AoOrange.copy(alpha = 0.2f))
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -282,8 +279,18 @@ fun StatsPlayerCard(player: Player, stats: PlayerStats) {
                 StatItem(label = "Asados", value = "${stats.asadosPlayed}")
                 StatItem(label = "ELO", value = "$elo")
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                StatItem(label = "Goles F.", value = "${stats.goalsScored}")
+                StatItem(label = "Goles C.", value = "${stats.goalsConceded}")
+                StatItem(label = "Dif. Goles", value = "${stats.goalDiff}")
+                val avgGoalsFormatted = String.format(Locale.US, "%.1f", stats.avgGoalsScored)
+                StatItem(label = "Prom. Goles", value = avgGoalsFormatted)
+            }
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
             // Progress bar
             LinearProgressIndicator(

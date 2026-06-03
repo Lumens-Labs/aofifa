@@ -82,6 +82,7 @@ dependencies {
 
     // Cloudinary
     implementation(libs.cloudinary.android)
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

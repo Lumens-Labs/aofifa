@@ -1,23 +1,44 @@
 package com.example.myapplication.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.viewmodel.MainViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun SyncScreen(viewModel: MainViewModel) {
-    val scope = rememberCoroutineScope()
-    var isUploading by remember { mutableStateOf(false) }
-    var isDownloading by remember { mutableStateOf(false) }
+    val loading by viewModel.loading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val success by viewModel.success.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    var showDownloadConfirm by remember { mutableStateOf(false) }
+    var showUploadConfirm by remember { mutableStateOf(false) }
+    var uploadPassword by remember { mutableStateOf("") }
+    var passwordError by remember { mutableStateOf(false) }
+
+    LaunchedEffect(error) {
+        error?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(success) {
+        success?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.clearSuccess()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -46,38 +67,22 @@ fun SyncScreen(viewModel: MainViewModel) {
         Spacer(modifier = Modifier.height(48.dp))
         
         Button(
-            onClick = { 
-                scope.launch {
-                    isUploading = true
-                    viewModel.uploadData()
-                    isUploading = false
-                }
-            },
-            enabled = !isUploading && !isDownloading,
+            onClick = { showUploadConfirm = true },
+            enabled = !loading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(containerColor = AoOrange),
             shape = MaterialTheme.shapes.medium
         ) {
-            if (isUploading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-            } else {
-                Text("Subir datos a la nube", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
+            Text("Subir datos a la nube", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
         OutlinedButton(
-            onClick = { 
-                scope.launch {
-                    isDownloading = true
-                    viewModel.refreshData()
-                    isDownloading = false
-                }
-            },
-            enabled = !isUploading && !isDownloading,
+            onClick = { showDownloadConfirm = true },
+            enabled = !loading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
@@ -85,11 +90,99 @@ fun SyncScreen(viewModel: MainViewModel) {
             border = androidx.compose.foundation.BorderStroke(1.dp, AoOrange),
             shape = MaterialTheme.shapes.medium
         ) {
-            if (isDownloading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = AoOrange)
-            } else {
-                Text("Bajar datos de la nube", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("Bajar datos de la nube", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+    }
+
+    if (loading) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = {}) {
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = AoOrange)
             }
         }
+    }
+
+    if (showDownloadConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDownloadConfirm = false },
+            title = { Text("¿Bajar Datos?") },
+            text = { Text("Se sobreescribirán todos los datos locales con la versión de la nube. Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.refreshData()
+                    showDownloadConfirm = false
+                }) {
+                    Text("Bajar", color = AoOrange)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDownloadConfirm = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showUploadConfirm) {
+        AlertDialog(
+            onDismissRequest = { 
+                showUploadConfirm = false
+                uploadPassword = ""
+                passwordError = false
+            },
+            title = { Text("Subir Datos a la Nube") },
+            text = {
+                Column {
+                    Text("Ingresa la contraseña para confirmar la subida.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = uploadPassword,
+                        onValueChange = { 
+                            uploadPassword = it
+                            passwordError = false
+                        },
+                        label = { Text("Contraseña") },
+                        isError = passwordError,
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true
+                    )
+                    if (passwordError) {
+                        Text(
+                            text = "Contraseña incorrecta",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (uploadPassword == "mumbongopro") {
+                        viewModel.uploadData()
+                        showUploadConfirm = false
+                        uploadPassword = ""
+                    } else {
+                        passwordError = true
+                    }
+                }) {
+                    Text("Confirmar Subida", color = AoOrange)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showUploadConfirm = false
+                    uploadPassword = ""
+                    passwordError = false
+                }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }

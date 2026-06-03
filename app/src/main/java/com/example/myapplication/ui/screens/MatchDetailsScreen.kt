@@ -2,10 +2,13 @@ package com.example.myapplication.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -19,7 +22,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import coil.compose.AsyncImage
 import com.example.myapplication.domain.model.Match
+import com.example.myapplication.ui.components.PlayerAvatar
 import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.theme.PlayerIcons
 import com.example.myapplication.ui.viewmodel.MainViewModel
@@ -95,53 +103,123 @@ fun MatchDetailsScreen(asadoId: String, viewModel: MainViewModel) {
 fun MatchItem(match: Match, playersMap: Map<String, com.example.myapplication.domain.model.Player>) {
     val winner = playersMap[match.winnerId]
     val loser = playersMap[match.loserId]
+    var isExpanded by remember { mutableStateOf(false) }
+    var showFullImage by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { isExpanded = !isExpanded },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = MaterialTheme.shapes.medium
     ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            // Winner
-            Image(
-                painter = painterResource(id = PlayerIcons.getAvatar(match.winnerId)),
-                contentDescription = null,
-                modifier = Modifier.size(24.dp).clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = winner?.name ?: "???",
-                fontWeight = FontWeight.Bold,
-                color = AoOrange,
-                fontSize = 14.sp
-            )
-            
-            Text(
-                text = " vs ",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
+        Column {
+            Row(
+                modifier = Modifier
+                    .padding(12.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                // Winner
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    PlayerAvatar(
+                        playerId = match.winnerId,
+                        avatarUrl = winner?.avatarUrl,
+                        modifier = Modifier.size(32.dp).clip(CircleShape)
+                    )
+                    Text(
+                        text = winner?.name ?: "???",
+                        fontWeight = FontWeight.Bold,
+                        color = AoOrange,
+                        fontSize = 12.sp
+                    )
+                }
+                
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    if (match.winnerGoles != null && match.loserGoles != null) {
+                        Text(
+                            text = "${match.winnerGoles} - ${match.loserGoles}",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 18.sp
+                        )
+                    }
+                    Text(
+                        text = "vs",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
 
-            // Loser
-            Image(
-                painter = painterResource(id = PlayerIcons.getAvatar(match.loserId)),
-                contentDescription = null,
-                modifier = Modifier.size(24.dp).clip(CircleShape),
-                contentScale = ContentScale.Crop
+                // Loser
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    PlayerAvatar(
+                        playerId = match.loserId,
+                        avatarUrl = loser?.avatarUrl,
+                        modifier = Modifier.size(32.dp).clip(CircleShape)
+                    )
+                    Text(
+                        text = loser?.name ?: "???",
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            if (isExpanded && !match.photoUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = match.photoUrl,
+                    contentDescription = "Foto del encuentro",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable { showFullImage = true },
+                    contentScale = ContentScale.FillWidth
+                )
+            }
+        }
+    }
+
+    if (showFullImage && !match.photoUrl.isNullOrEmpty()) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showFullImage = false },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = loser?.name ?: "???",
-                fontWeight = FontWeight.Normal,
-                fontSize = 14.sp
-            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.9f))
+                    .clickable { showFullImage = false }
+            ) {
+                AsyncImage(
+                    model = match.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
+                )
+                IconButton(
+                    onClick = { showFullImage = false },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cerrar",
+                        tint = Color.White
+                    )
+                }
+            }
         }
     }
 }

@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class AsadoEntity(
     @PrimaryKey val id: String,
     val date: String,
-    val playerIds: String, // Stored as comma-separated IDs
+    val playerIds: String,
     val comment: String?,
-    val isActive: Boolean = false
+    val isActive: Boolean? = false
 )

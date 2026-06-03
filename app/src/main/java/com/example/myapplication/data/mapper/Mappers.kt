@@ -8,7 +8,7 @@ import com.example.myapplication.domain.model.Match
 import com.example.myapplication.domain.model.Player
 
 fun PlayerEntity.toDomain() = Player(id, name, createdAt, avatarUrl, colorHex, elo)
-fun Player.toEntity() = PlayerEntity(id, name, createdAt, avatarUrl, colorHex ?: "#00E676", elo)
+fun Player.toEntity() = PlayerEntity(id, name, createdAt, avatarUrl, colorHex, elo)
 
 fun MatchEntity.toDomain() = Match(id, asadoId, winnerId, loserId, winnerGoles, loserGoles, photoUrl, createdAt)
 fun Match.toEntity() = MatchEntity(id, asadoId, winnerId, loserId, winnerGoles, loserGoles, photoUrl, createdAt)

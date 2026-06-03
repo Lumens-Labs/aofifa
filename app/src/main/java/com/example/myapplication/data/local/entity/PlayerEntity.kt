@@ -7,8 +7,8 @@ import androidx.room.PrimaryKey
 data class PlayerEntity(
     @PrimaryKey val id: String,
     val name: String,
-    val createdAt: String,
+    val createdAt: String?,
     val avatarUrl: String?,
-    val colorHex: String,
-    val elo: Int
+    val colorHex: String?,
+    val elo: Int?
 )

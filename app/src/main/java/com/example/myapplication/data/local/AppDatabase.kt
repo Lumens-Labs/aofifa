@@ -11,7 +11,7 @@ import com.example.myapplication.data.local.entity.PlayerEntity
 
 @Database(
     entities = [PlayerEntity::class, AsadoEntity::class, MatchEntity::class],
-    version = 4, // Incremented to handle schema change (added isActive to AsadoEntity)
+    version = 5, // Updated for nullable fields in all entities
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

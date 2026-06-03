@@ -62,4 +62,17 @@ class AoRepository(
     suspend fun insertMatch(match: Match) {
         db.matchDao().insertMatches(listOf(match.toEntity()))
     }
+
+    suspend fun updatePlayer(player: Player) {
+        db.playerDao().updatePlayer(player.toEntity())
+    }
+
+    suspend fun getRemoteTeams() = try {
+        val response = api.getTeams()
+        response.teams.map { 
+            it.copy(logoUrl = "https://nejca.com.ar${it.logoUrl}")
+        }
+    } catch (e: Exception) {
+        emptyList()
+    }
 }

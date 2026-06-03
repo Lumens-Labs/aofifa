@@ -17,6 +17,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import com.example.myapplication.ui.components.PlayerAvatar
 import com.example.myapplication.ui.theme.PlayerIcons
 import com.example.myapplication.ui.viewmodel.MainViewModel
 
@@ -54,11 +55,10 @@ fun H2HCard(player: com.example.myapplication.domain.model.Player, matches: List
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(id = PlayerIcons.getAvatar(player.id)),
-                contentDescription = null,
-                modifier = Modifier.size(56.dp).clip(CircleShape).background(playerColor.copy(alpha = 0.2f)),
-                contentScale = ContentScale.Crop
+            PlayerAvatar(
+                playerId = player.id,
+                avatarUrl = player.avatarUrl,
+                modifier = Modifier.size(56.dp).clip(CircleShape).background(playerColor.copy(alpha = 0.2f))
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {

@@ -11,6 +11,8 @@ data class PlayerStats(
     val played: Int = 0,
     val wins: Int = 0,
     val losses: Int = 0,
+    val goalsScored: Int = 0,
+    val goalsConceded: Int = 0,
     val winRate: Double = 0.0,
     val totalPoints: Int = 0,
     val averagePoints: Double = 0.0,
@@ -19,7 +21,10 @@ data class PlayerStats(
     val nemesisId: String? = null,
     val elo: Int = 1500,
     val asadosPlayed: Int = 0
-)
+) {
+    val goalDiff: Int get() = goalsScored - goalsConceded
+    val avgGoalsScored: Double get() = if (played > 0) goalsScored.toDouble() / played else 0.0
+}
 
 data class AsadoRanking(
     val asadoId: String,
@@ -108,8 +113,24 @@ object RankingEngine {
         // 5. Finalize Global Stats
         return statsMap.values.map { stats ->
             val pMatches = sortedMatches.filter { it.winnerId == stats.playerId || it.loserId == stats.playerId }
-            val wins = pMatches.count { it.winnerId == stats.playerId }
-            val losses = pMatches.count { it.loserId == stats.playerId }
+            
+            var goalsScored = 0
+            var goalsConceded = 0
+            var wins = 0
+            var losses = 0
+
+            pMatches.forEach { match ->
+                if (match.winnerId == stats.playerId) {
+                    wins++
+                    goalsScored += (match.winnerGoles ?: 0)
+                    goalsConceded += (match.loserGoles ?: 0)
+                } else {
+                    losses++
+                    goalsScored += (match.loserGoles ?: 0)
+                    goalsConceded += (match.winnerGoles ?: 0)
+                }
+            }
+
             val played = wins + losses
             
             val winRate = if (played > 0) (wins.toDouble() / played * 100.0) else 0.0
@@ -122,6 +143,8 @@ object RankingEngine {
                 played = played,
                 wins = wins,
                 losses = losses,
+                goalsScored = goalsScored,
+                goalsConceded = goalsConceded,
                 winRate = (winRate * 100.0).roundToInt() / 100.0,
                 averagePoints = (avgPoints * 100.0).roundToInt() / 100.0,
                 elo = currentElos[stats.playerId] ?: 1500,
