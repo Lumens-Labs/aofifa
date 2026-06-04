@@ -4,6 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
@@ -157,50 +160,66 @@ fun MainScreen(mainViewModel: MainViewModel, asadoViewModel: AsadoViewModel) {
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Asado.route,
-            modifier = Modifier.padding(innerPadding)
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
         ) {
-            composable(Screen.Asado.route) { 
-                AsadoScreen(
-                    mainViewModel = mainViewModel, 
-                    asadoViewModel = asadoViewModel,
-                    onAsadoClick = { asadoId ->
-                        navController.navigate(Screen.MatchDetails.createRoute(asadoId))
-                    },
-                    onActiveAsadoClick = { asadoId ->
-                        navController.navigate(Screen.ActiveAsado.createRoute(asadoId))
-                    }
-                ) 
-            }
-            composable(Screen.Stats.route) { StatsScreen(mainViewModel) }
-            composable(Screen.Players.route) { PlayersScreen(mainViewModel) }
-            composable(Screen.Sync.route) { SyncScreen(mainViewModel) }
-            composable(Screen.Help.route) { HelpScreen() }
-            
-            composable(
-                route = Screen.MatchDetails.route,
-                arguments = listOf(navArgument("asadoId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val asadoId = backStackEntry.arguments?.getString("asadoId") ?: ""
-                MatchDetailsScreen(asadoId = asadoId, viewModel = mainViewModel)
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Asado.route,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                composable(Screen.Asado.route) { 
+                    AsadoScreen(
+                        mainViewModel = mainViewModel, 
+                        asadoViewModel = asadoViewModel,
+                        onAsadoClick = { asadoId ->
+                            navController.navigate(Screen.MatchDetails.createRoute(asadoId))
+                        },
+                        onActiveAsadoClick = { asadoId ->
+                            navController.navigate(Screen.ActiveAsado.createRoute(asadoId))
+                        }
+                    ) 
+                }
+                composable(Screen.Stats.route) { StatsScreen(mainViewModel) }
+                composable(Screen.Players.route) { PlayersScreen(mainViewModel) }
+                composable(Screen.Sync.route) { SyncScreen(mainViewModel) }
+                composable(Screen.Help.route) { HelpScreen() }
+                
+                composable(
+                    route = Screen.MatchDetails.route,
+                    arguments = listOf(navArgument("asadoId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val asadoId = backStackEntry.arguments?.getString("asadoId") ?: ""
+                    MatchDetailsScreen(asadoId = asadoId, viewModel = mainViewModel)
+                }
+
+                composable(
+                    route = Screen.ActiveAsado.route,
+                    arguments = listOf(navArgument("asadoId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val asadoId = backStackEntry.arguments?.getString("asadoId") ?: ""
+                    ActiveAsadoScreen(
+                        asadoId = asadoId,
+                        mainViewModel = mainViewModel,
+                        asadoViewModel = asadoViewModel,
+                        onNavigateBack = { 
+                            navController.popBackStack(Screen.Asado.route, false)
+                        }
+                    )
+                }
             }
 
-            composable(
-                route = Screen.ActiveAsado.route,
-                arguments = listOf(navArgument("asadoId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val asadoId = backStackEntry.arguments?.getString("asadoId") ?: ""
-                ActiveAsadoScreen(
-                    asadoId = asadoId,
-                    mainViewModel = mainViewModel,
-                    asadoViewModel = asadoViewModel,
-                    onNavigateBack = { 
-                        navController.popBackStack(Screen.Asado.route, false)
-                    }
-                )
-            }
+            // Version label
+            Text(
+                text = "v${BuildConfig.VERSION_NAME}",
+                fontSize = 10.sp,
+                color = Color.Gray.copy(alpha = 0.5f),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 4.dp)
+            )
         }
     }
 }
