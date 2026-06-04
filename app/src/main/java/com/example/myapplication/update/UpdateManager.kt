@@ -17,7 +17,7 @@ class UpdateManager(private val context: Context) {
             .setTitle("Actualizando App")
             .setDescription("Nueva versión $version")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+            .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)
             .setMimeType("application/vnd.android.package-archive")
 
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -38,14 +38,32 @@ class UpdateManager(private val context: Context) {
     }
 
     private fun installApk(fileName: String) {
-        val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName)
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        try {
+            val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+            if (!file.exists()) {
+                return
+            }
 
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!context.packageManager.canRequestPackageInstalls()) {
+                    val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                    intent.data = Uri.parse("package:${context.packageName}")
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    return // El usuario debe dar permiso y volver a intentar
+                }
+            }
+
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        context.startActivity(intent)
     }
 }
