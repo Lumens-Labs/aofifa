@@ -49,6 +49,11 @@ class MainActivity : ComponentActivity() {
         ViewModelFactory((application as AoApplication).repository)
     }
 
+    override fun onResume() {
+        super.onResume()
+        (application as AoApplication).updateManager.checkPendingInstall()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -77,7 +82,6 @@ class MainActivity : ComponentActivity() {
                             if (url != null && tag != null) {
                                 app.updateManager.downloadAndInstall(url, tag)
                             }
-                            releaseInfo = null
                         },
                         onDismiss = { releaseInfo = null }
                     )

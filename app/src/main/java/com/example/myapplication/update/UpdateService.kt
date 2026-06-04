@@ -23,9 +23,23 @@ class UpdateService(
             val remote = remoteTag.replace("v", "").trim()
             val local = currentVersion.replace("v", "").trim()
 
-            if (remote != local) latest else null
+            if (isRemoteNewer(local, remote)) latest else null
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun isRemoteNewer(local: String, remote: String): Boolean {
+        val localParts = local.split(".").map { it.toIntOrNull() ?: 0 }
+        val remoteParts = remote.split(".").map { it.toIntOrNull() ?: 0 }
+        
+        val maxLength = maxOf(localParts.size, remoteParts.size)
+        for (i in 0 until maxLength) {
+            val l = localParts.getOrElse(i) { 0 }
+            val r = remoteParts.getOrElse(i) { 0 }
+            if (r > l) return true
+            if (r < l) return false
+        }
+        return false
     }
 }
