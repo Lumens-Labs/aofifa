@@ -67,6 +67,10 @@ class AoRepository(
         db.playerDao().updatePlayer(player.toEntity())
     }
 
+    suspend fun addPlayer(player: Player) {
+        db.playerDao().insertPlayers(listOf(player.toEntity()))
+    }
+
     suspend fun getRemoteTeams() = try {
         val response = api.getTeams()
         response.teams.map { team ->

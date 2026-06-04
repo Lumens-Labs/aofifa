@@ -97,4 +97,24 @@ class MainViewModel(private val repository: AoRepository) : ViewModel() {
             repository.updatePlayer(player.copy(avatarUrl = badgeName))
         }
     }
+
+    fun addPlayer(name: String) {
+        viewModelScope.launch {
+            try {
+                val newPlayer = Player(
+                    id = java.util.UUID.randomUUID().toString(),
+                    name = name,
+                    createdAt = java.time.LocalDateTime.now().toString(),
+                    avatarUrl = null,
+                    colorHex = "#00E676",
+                    elo = 1500
+                )
+                repository.addPlayer(newPlayer)
+                _success.value = "Jugador añadido: $name"
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Error adding player", e)
+                _error.value = "Error al añadir jugador: ${e.message}"
+            }
+        }
+    }
 }

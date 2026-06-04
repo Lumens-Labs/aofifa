@@ -36,11 +36,35 @@ import com.example.myapplication.ui.viewmodel.MainViewModel
 fun PlayersScreen(viewModel: MainViewModel) {
     val snapshot by viewModel.snapshot.collectAsState()
     var selectedPlayerForBadge by remember { mutableStateOf<Player?>(null) }
+    var showAddPlayerDialog by remember { mutableStateOf(false) }
+    
+    // Feedback for success/error
+    val context = LocalContext.current
+    val error by viewModel.error.collectAsState()
+    val success by viewModel.success.collectAsState()
+
+    LaunchedEffect(error) {
+        error?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(success) {
+        success?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.clearSuccess()
+        }
+    }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: Add Player */ },
+                onClick = { 
+                    android.util.Log.d("PlayersScreen", "FAB clicked")
+                    showAddPlayerDialog = true 
+                },
                 containerColor = AoOrange,
                 contentColor = Color.White
             ) {
@@ -63,11 +87,24 @@ fun PlayersScreen(viewModel: MainViewModel) {
             )
 
             snapshot?.let { data ->
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(data.players) { player ->
-                        PlayerItem(player, onBadgeClick = { selectedPlayerForBadge = it })
+                if (data.players.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No hay jugadores registrados.",
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(data.players) { player ->
+                            PlayerItem(player, onBadgeClick = { selectedPlayerForBadge = it })
+                        }
                     }
                 }
             } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -88,6 +125,53 @@ fun PlayersScreen(viewModel: MainViewModel) {
             }
         )
     }
+
+    if (showAddPlayerDialog) {
+        AddPlayerDialog(
+            onDismiss = { showAddPlayerDialog = false },
+            onConfirm = { name ->
+                viewModel.addPlayer(name)
+                showAddPlayerDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun AddPlayerDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nuevo Jugador") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Nombre del Jugador") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AoOrange,
+                    focusedLabelColor = AoOrange
+                )
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (name.isNotBlank()) onConfirm(name) },
+                enabled = name.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = AoOrange)
+            ) {
+                Text("Agregar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @Composable

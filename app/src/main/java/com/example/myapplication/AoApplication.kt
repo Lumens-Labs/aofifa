@@ -6,6 +6,9 @@ import com.example.myapplication.data.local.AppDatabase
 import com.example.myapplication.data.remote.AoApiService
 import com.example.myapplication.data.remote.CloudinaryManager
 import com.example.myapplication.data.repository.AoRepository
+import com.example.myapplication.update.GithubApi
+import com.example.myapplication.update.UpdateManager
+import com.example.myapplication.update.UpdateService
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -14,6 +17,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 class AoApplication : Application() {
 
     lateinit var repository: AoRepository
+    lateinit var updateService: UpdateService
+    lateinit var updateManager: UpdateManager
 
     override fun onCreate() {
         super.onCreate()
@@ -41,8 +46,17 @@ class AoApplication : Application() {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
+        val githubApi = Retrofit.Builder()
+            .baseUrl("https://api.github.com/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GithubApi::class.java)
+
         val api = retrofit.create(AoApiService::class.java)
 
         repository = AoRepository(db, api)
+        updateService = UpdateService(this, githubApi)
+        updateManager = UpdateManager(this)
     }
 }

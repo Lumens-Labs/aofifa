@@ -10,8 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +32,9 @@ import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.myapplication.ui.viewmodel.AsadoViewModel
 import com.example.myapplication.ui.viewmodel.MainViewModel
 import com.example.myapplication.ui.viewmodel.ViewModelFactory
+import com.example.myapplication.update.GithubRelease
+import com.example.myapplication.update.UpdateDialog
+import com.example.myapplication.BuildConfig
 
 class MainActivity : ComponentActivity() {
     
@@ -46,8 +48,34 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val app = application as AoApplication
+
         setContent {
             MyApplicationTheme {
+                var releaseInfo by remember { mutableStateOf<GithubRelease?>(null) }
+
+                LaunchedEffect(Unit) {
+                    // Reemplazar con tus datos reales de GitHub
+                    releaseInfo = app.updateService.checkForUpdates(
+                        "nicolascontreras677", 
+                        "AO_FIFA_Stats", 
+                        BuildConfig.VERSION_NAME
+                    )
+                }
+
+                releaseInfo?.let { release ->
+                    UpdateDialog(
+                        release = release,
+                        onConfirm = {
+                            val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") }
+                            apkAsset?.let { app.updateManager.downloadAndInstall(it.downloadUrl, release.tagName) }
+                            releaseInfo = null
+                        },
+                        onDismiss = { releaseInfo = null }
+                    )
+                }
+
                 MainScreen(mainViewModel, asadoViewModel)
             }
         }
