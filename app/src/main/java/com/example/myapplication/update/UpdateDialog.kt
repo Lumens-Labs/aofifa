@@ -1,10 +1,12 @@
 package com.example.myapplication.update
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,14 +56,25 @@ fun UpdateDialog(
                         )
                     }
                     is UpdateStatus.Downloading -> {
+                        val animatedProgress by animateFloatAsState(
+                            targetValue = status.progress,
+                            label = "downloadProgress"
+                        )
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
                         ) {
-                            CircularProgressIndicator(color = AoOrange)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Descargando actualización...", fontWeight = FontWeight.Bold)
-                            Text("Por favor espera, esto puede tomar unos segundos.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            LinearProgressIndicator(
+                                progress = { animatedProgress },
+                                modifier = Modifier.fillMaxWidth().height(14.dp),
+                                color = AoOrange,
+                                trackColor = Color.DarkGray,
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Descargando... ${(status.progress * 100).toInt()}%",
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                     is UpdateStatus.ReadyToInstall -> {

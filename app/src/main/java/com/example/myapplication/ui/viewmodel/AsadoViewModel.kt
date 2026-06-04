@@ -106,6 +106,12 @@ class AsadoViewModel(private val repository: AoRepository) : ViewModel() {
                 participants = participants,
                 leagueConfig = TournamentEngine.generateInitialLeague(participants)
             )
+            TournamentMode.ONE_VS_ONE -> TournamentConfig(
+                mode = mode,
+                status = TournamentStatus.IN_PROGRESS,
+                participants = participants,
+                oneVsOneConfig = TournamentEngine.generateInitialOneVsOne(participants)
+            )
             else -> TournamentConfig(participants = participants)
         }
 
@@ -177,6 +183,20 @@ class AsadoViewModel(private val repository: AoRepository) : ViewModel() {
                             } else f
                         }
                         config.copy(leagueConfig = LeagueConfig(updatedFixtures ?: emptyList()))
+                    }
+                    TournamentMode.ONE_VS_ONE -> {
+                        config.oneVsOneConfig?.let { ovs ->
+                            val updated = if (winnerId == ovs.player1Id) {
+                                ovs.copy(player1Wins = ovs.player1Wins + 1)
+                            } else {
+                                ovs.copy(player2Wins = ovs.player2Wins + 1)
+                            }
+                            val finished = updated.player1Wins >= updated.targetWins || updated.player2Wins >= updated.targetWins
+                            config.copy(
+                                oneVsOneConfig = updated,
+                                status = if (finished) TournamentStatus.FINISHED else config.status
+                            )
+                        } ?: config
                     }
                     else -> config
                 }

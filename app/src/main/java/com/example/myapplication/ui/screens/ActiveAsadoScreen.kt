@@ -63,12 +63,16 @@ fun ActiveAsadoScreen(
     var isUploading by remember { mutableStateOf(false) }
     var showFinalizeDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
+    var suggestedMatch by remember { mutableStateOf<Set<String>?>(null) }
 
     snapshot?.let { data ->
         val asado = data.asados.find { it.id == asadoId } ?: return@let
-        val participatingPlayers = data.players.filter { player -> 
-            asado.playerIds.contains(player.id) 
+        val participatingPlayers = data.players.filter { player ->
+            asado.playerIds.contains(player.id)
         }
+        val cargarPlayers = suggestedMatch?.let { ids ->
+            participatingPlayers.filter { ids.contains(it.id) }
+        } ?: participatingPlayers
 
         if (showCamera) {
             CameraScreen(
@@ -89,6 +93,8 @@ fun ActiveAsadoScreen(
                             loserId = null
                             winnerGoles = "1"
                             loserGoles = "0"
+                            suggestedMatch = null
+                            selectedTab = 2
                             Toast.makeText(context, "Resultado cargado con éxito!", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(context, "Error al subir la foto", Toast.LENGTH_SHORT).show()
@@ -180,7 +186,7 @@ fun ActiveAsadoScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 PlayerGrid(
-                                    players = participatingPlayers,
+                                    players = cargarPlayers,
                                     selectedId = winnerId,
                                     onPlayerSelected = { winnerId = it },
                                     disabledId = loserId
@@ -194,7 +200,7 @@ fun ActiveAsadoScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 PlayerGrid(
-                                    players = participatingPlayers,
+                                    players = cargarPlayers,
                                     selectedId = loserId,
                                     onPlayerSelected = { loserId = it },
                                     disabledId = winnerId
@@ -255,6 +261,8 @@ fun ActiveAsadoScreen(
                                                 loserId = null
                                                 winnerGoles = "1"
                                                 loserGoles = "0"
+                                                suggestedMatch = null
+                                                selectedTab = 2
                                                 Toast.makeText(context, "Resultado guardado (sin foto)", Toast.LENGTH_SHORT).show()
                                             },
                                             enabled = winnerId != null && loserId != null,
@@ -315,8 +323,7 @@ fun ActiveAsadoScreen(
                                 liveMatches = liveMatches,
                                 viewModel = asadoViewModel,
                                 onQuickRegister = { w, l ->
-                                    winnerId = w
-                                    loserId = l
+                                    suggestedMatch = setOf(w, l)
                                     selectedTab = 0
                                 }
                             )
@@ -518,7 +525,11 @@ fun TournamentLauncher(participantCount: Int, onStart: (TournamentMode) -> Unit)
             Text(text = "Modos Sugeridos", fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             
-            if (participantCount == 3) {
+            if (participantCount == 2) {
+                Button(onClick = { onStart(TournamentMode.ONE_VS_ONE) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("1 vs 1 (Mejor de 5)")
+                }
+            } else if (participantCount == 3) {
                 Button(onClick = { onStart(TournamentMode.WINNER_STAYS) }, modifier = Modifier.fillMaxWidth()) {
                     Text("Ganador Queda (3 Jugadores)")
                 }
@@ -567,6 +578,40 @@ fun TournamentStatusView(
                 if (ws.queue.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("En espera: " + ws.queue.map { playersMap[it]?.name ?: "" }.joinToString(", "))
+                }
+            }
+        }
+        TournamentMode.ONE_VS_ONE -> {
+            config.oneVsOneConfig?.let { ovs ->
+                val p1 = playersMap[ovs.player1Id]
+                val p2 = playersMap[ovs.player2Id]
+
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("1 vs 1 — Mejor de ${ovs.targetWins * 2 - 1}", style = MaterialTheme.typography.titleMedium, color = AoOrange)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            PlayerVSCard(p1)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("${ovs.player1Wins}", fontWeight = FontWeight.Black, fontSize = 28.sp)
+                            Text("  -  ", fontWeight = FontWeight.Black, fontSize = 20.sp)
+                            Text("${ovs.player2Wins}", fontWeight = FontWeight.Black, fontSize = 28.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            PlayerVSCard(p2)
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        val isFinished = ovs.player1Wins >= ovs.targetWins || ovs.player2Wins >= ovs.targetWins
+                        if (isFinished) {
+                            val winner = if (ovs.player1Wins >= ovs.targetWins) p1 else p2
+                            Text("¡${winner?.name} GANA LA SERIE!", color = AoOrange, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        } else {
+                            Button(onClick = { onQuickRegister(ovs.player1Id, ovs.player2Id) }) {
+                                Text("Jugar Siguiente")
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,18 +16,22 @@ import java.io.File
 
 sealed interface UpdateStatus {
     object Idle : UpdateStatus
-    object Downloading : UpdateStatus
+    data class Downloading(val progress: Float = 0f) : UpdateStatus
     object ReadyToInstall : UpdateStatus
     data class Error(val message: String) : UpdateStatus
 }
 
 class UpdateManager(private val context: Context) {
 
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     private val _status = MutableStateFlow<UpdateStatus>(UpdateStatus.Idle)
     val status: StateFlow<UpdateStatus> = _status.asStateFlow()
 
     private var isDownloading = false
     var pendingInstallApkName: String? = null
+    private var downloadId: Long = -1L
+    private var progressJob: Job? = null
 
     fun checkPendingInstall() {
         pendingInstallApkName?.let { fileName ->
@@ -49,12 +54,10 @@ class UpdateManager(private val context: Context) {
         val downloadDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
         val file = File(downloadDir, fileName)
 
-        // 1. Limpiar APKs viejos de actualizaciones anteriores
         downloadDir?.listFiles()
             ?.filter { it.name.startsWith("update_") && it.name != fileName }
             ?.forEach { it.delete() }
 
-        // 2. Si el archivo actual ya existe, saltamos la descarga y vamos directo a instalar
         if (file.exists()) {
             _status.value = UpdateStatus.ReadyToInstall
             installApk(fileName)
@@ -66,9 +69,7 @@ class UpdateManager(private val context: Context) {
             return
         }
         isDownloading = true
-        _status.value = UpdateStatus.Downloading
-        
-        Toast.makeText(context, "Descargando actualización en segundo plano...", Toast.LENGTH_LONG).show()
+        _status.value = UpdateStatus.Downloading(0f)
 
         val request = DownloadManager.Request(Uri.parse(url))
             .setTitle("Actualizando App")
@@ -78,13 +79,35 @@ class UpdateManager(private val context: Context) {
             .setMimeType("application/vnd.android.package-archive")
 
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val downloadId = dm.enqueue(request)
+        downloadId = dm.enqueue(request)
+
+        progressJob?.cancel()
+        progressJob = scope.launch {
+            while (isActive) {
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                val cursor: Cursor = dm.query(query)
+                if (cursor.moveToFirst()) {
+                    val bytesIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    val totalIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    val bytesDownloaded = if (bytesIdx >= 0) cursor.getLong(bytesIdx) else 0L
+                    val totalBytes = if (totalIdx >= 0) cursor.getLong(totalIdx) else 0L
+                    if (totalBytes > 0) {
+                        _status.value = UpdateStatus.Downloading(
+                            (bytesDownloaded.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                        )
+                    }
+                }
+                cursor.close()
+                delay(300)
+            }
+        }
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
                 if (id == downloadId) {
                     isDownloading = false
+                    progressJob?.cancel()
                     val query = DownloadManager.Query().setFilterById(downloadId)
                     val cursor: Cursor = dm.query(query)
                     if (cursor.moveToFirst()) {

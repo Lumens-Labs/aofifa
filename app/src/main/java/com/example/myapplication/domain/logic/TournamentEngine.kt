@@ -5,13 +5,35 @@ import com.example.myapplication.domain.model.*
 object TournamentEngine {
 
     fun generateInitialLeague(participants: List<String>): LeagueConfig {
-        val fixtures = mutableListOf<TournamentMatch>()
-        for (i in participants.indices) {
-            for (j in i + 1 until participants.size) {
-                fixtures.add(TournamentMatch(participants[i], participants[j]))
-            }
+        val list = participants.toMutableList()
+        if (list.size % 2 == 1) {
+            list.add("")
         }
-        return LeagueConfig(fixtures.shuffled())
+        val numRounds = list.size - 1
+        val half = list.size / 2
+        val fixtures = mutableListOf<TournamentMatch>()
+
+        for (round in 0 until numRounds) {
+            for (i in 0 until half) {
+                val p1 = list[i]
+                val p2 = list[list.size - 1 - i]
+                if (p1.isNotEmpty() && p2.isNotEmpty()) {
+                    fixtures.add(TournamentMatch(p1, p2))
+                }
+            }
+            val last = list.removeAt(list.size - 1)
+            list.add(1, last)
+        }
+
+        return LeagueConfig(fixtures)
+    }
+
+    fun generateInitialOneVsOne(participants: List<String>): OneVsOneConfig? {
+        if (participants.size < 2) return null
+        return OneVsOneConfig(
+            player1Id = participants[0],
+            player2Id = participants[1]
+        )
     }
 
     fun generateInitialWinnerStays(participants: List<String>): WinnerStaysConfig? {

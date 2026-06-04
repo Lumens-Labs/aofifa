@@ -7,13 +7,15 @@ data class TournamentConfig(
     @SerializedName("status") val status: TournamentStatus = TournamentStatus.NOT_STARTED,
     @SerializedName("participants") val participants: List<String> = emptyList(), // Player IDs currently in the house
     @SerializedName("winnerStaysConfig") val winnerStaysConfig: WinnerStaysConfig? = null,
-    @SerializedName("leagueConfig") val leagueConfig: LeagueConfig? = null
+    @SerializedName("leagueConfig") val leagueConfig: LeagueConfig? = null,
+    @SerializedName("oneVsOneConfig") val oneVsOneConfig: OneVsOneConfig? = null
 )
 
 enum class TournamentMode {
     @SerializedName("none") NONE,
     @SerializedName("winner_stays") WINNER_STAYS,
-    @SerializedName("league") LEAGUE
+    @SerializedName("league") LEAGUE,
+    @SerializedName("one_vs_one") ONE_VS_ONE
 }
 
 enum class TournamentStatus {
@@ -30,6 +32,14 @@ data class WinnerStaysConfig(
 
 data class LeagueConfig(
     @SerializedName("fixtures") val fixtures: List<TournamentMatch> = emptyList()
+)
+
+data class OneVsOneConfig(
+    @SerializedName("player1Id") val player1Id: String,
+    @SerializedName("player2Id") val player2Id: String,
+    @SerializedName("player1Wins") val player1Wins: Int = 0,
+    @SerializedName("player2Wins") val player2Wins: Int = 0,
+    @SerializedName("targetWins") val targetWins: Int = 3
 )
 
 data class TournamentMatch(
