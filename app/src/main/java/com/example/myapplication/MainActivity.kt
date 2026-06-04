@@ -215,7 +215,7 @@ fun MainScreen(mainViewModel: MainViewModel, asadoViewModel: AsadoViewModel) {
             Text(
                 text = "v${BuildConfig.VERSION_NAME}",
                 fontSize = 10.sp,
-                color = Color.Gray.copy(alpha = 0.5f),
+                color = Color.Gray.copy(alpha = 0.8f),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 12.dp, bottom = 4.dp)
