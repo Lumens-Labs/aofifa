@@ -19,7 +19,8 @@ class UpdateService(
             val latest = api.getLatestRelease(owner, repo)
             context.dataStore.edit { it[LAST_CHECK_KEY] = System.currentTimeMillis() }
 
-            val remote = latest.tagName.replace("v", "").trim()
+            val remoteTag = latest.tagName ?: return null
+            val remote = remoteTag.replace("v", "").trim()
             val local = currentVersion.replace("v", "").trim()
 
             if (remote != local) latest else null

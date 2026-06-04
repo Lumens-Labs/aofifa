@@ -71,8 +71,12 @@ class MainActivity : ComponentActivity() {
                     UpdateDialog(
                         release = release,
                         onConfirm = {
-                            val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") }
-                            apkAsset?.let { app.updateManager.downloadAndInstall(it.downloadUrl, release.tagName) }
+                            val apkAsset = release.assets?.firstOrNull { it.name?.endsWith(".apk") == true }
+                            val url = apkAsset?.downloadUrl
+                            val tag = release.tagName
+                            if (url != null && tag != null) {
+                                app.updateManager.downloadAndInstall(url, tag)
+                            }
                             releaseInfo = null
                         },
                         onDismiss = { releaseInfo = null }

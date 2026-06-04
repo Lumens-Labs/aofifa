@@ -5,14 +5,14 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 data class GithubRelease(
-    @SerializedName("tag_name") val tagName: String,
-    @SerializedName("body") val changelog: String,
-    @SerializedName("assets") val assets: List<GithubAsset>
+    @SerializedName("tag_name") val tagName: String?,
+    @SerializedName("body") val changelog: String?,
+    @SerializedName("assets") val assets: List<GithubAsset>?
 )
 
 data class GithubAsset(
-    @SerializedName("name") val name: String,
-    @SerializedName("browser_download_url") val downloadUrl: String
+    @SerializedName("name") val name: String?,
+    @SerializedName("browser_download_url") val downloadUrl: String?
 )
 
 interface GithubApi {

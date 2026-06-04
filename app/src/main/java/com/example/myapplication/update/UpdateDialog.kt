@@ -20,10 +20,10 @@ fun UpdateDialog(
         title = { Text("Actualización disponible") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text("Versión: ${release.tagName}", fontWeight = FontWeight.Bold)
+                Text("Versión: ${release.tagName ?: "Desconocida"}", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Novedades:")
-                Text(release.changelog, style = MaterialTheme.typography.bodySmall)
+                Text(release.changelog ?: "Sin descripción de novedades.", style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
