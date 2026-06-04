@@ -15,9 +15,6 @@ class UpdateService(
     private val LAST_CHECK_KEY = longPreferencesKey("last_check")
 
     suspend fun checkForUpdates(owner: String, repo: String, currentVersion: String): GithubRelease? {
-        val lastCheck = context.dataStore.data.first()[LAST_CHECK_KEY] ?: 0L
-        if ((System.currentTimeMillis() - lastCheck) < 86400000) return null
-
         return try {
             val latest = api.getLatestRelease(owner, repo)
             context.dataStore.edit { it[LAST_CHECK_KEY] = System.currentTimeMillis() }

@@ -61,8 +61,8 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     // Reemplazar con tus datos reales de GitHub
                     releaseInfo = app.updateService.checkForUpdates(
-                        "nicolascontreras677", 
-                        "AO_FIFA_Stats", 
+                        "Lumens-Labs", 
+                        "aofifa", 
                         BuildConfig.VERSION_NAME
                     )
                 }
