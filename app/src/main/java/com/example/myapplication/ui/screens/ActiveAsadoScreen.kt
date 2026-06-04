@@ -33,13 +33,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateFloatAsState
 import com.example.myapplication.data.remote.CloudinaryManager
 import com.example.myapplication.domain.model.*
+import com.example.myapplication.ui.components.CustomDialog
 import com.example.myapplication.ui.components.PlayerAvatar
 import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.theme.PlayerIcons
 import com.example.myapplication.ui.viewmodel.AsadoViewModel
 import com.example.myapplication.ui.viewmodel.MainViewModel
+
 
 @Composable
 fun ActiveAsadoScreen(
@@ -327,22 +330,30 @@ fun ActiveAsadoScreen(
     }
 
     if (showFinalizeDialog) {
-        AlertDialog(
+        CustomDialog(
             onDismissRequest = { showFinalizeDialog = false },
-            title = { Text("Finalizar Asado") },
-            text = { Text("¿Estás seguro de que deseas finalizar este asado? Ya no podrás registrar más partidos para esta sesión.") },
+            title = "Finalizar Asado",
+            content = {
+                Text(
+                    text = "¿Estás seguro de que deseas finalizar este asado? Ya no podrás registrar más partidos para esta sesión.",
+                    color = Color.White
+                )
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    asadoViewModel.finalizeAsado()
-                    showFinalizeDialog = false
-                    onNavigateBack()
-                }) {
-                    Text("Finalizar", color = AoOrange)
+                Button(
+                    onClick = {
+                        asadoViewModel.finalizeAsado()
+                        showFinalizeDialog = false
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AoOrange)
+                ) {
+                    Text("Finalizar", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showFinalizeDialog = false }) {
-                    Text("Cancelar")
+                    Text("Cancelar", color = Color.Gray)
                 }
             }
         )
@@ -376,6 +387,8 @@ fun PlayerGrid(
                         val player = players[index]
                         val isSelected = player.id == selectedId
                         val isDisabled = player.id == disabledId
+                        val scale by animateFloatAsState(targetValue = if (isSelected) 1.08f else 1.0f)
+                        val opacity by animateFloatAsState(targetValue = if (isDisabled) 0.3f else 1.0f)
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -393,7 +406,11 @@ fun PlayerGrid(
                                 )
                                 .clickable(enabled = !isDisabled) { onPlayerSelected(player.id) }
                                 .padding(8.dp)
-                                .graphicsLayer { alpha = if (isDisabled) 0.3f else 1.0f }
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    alpha = opacity
+                                }
                         ) {
                             PlayerAvatar(
                                 playerId = player.id,

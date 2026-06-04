@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.myapplication.domain.model.Player
+import com.example.myapplication.ui.components.CustomDialog
 import com.example.myapplication.ui.components.PlayerAvatar
 import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.theme.PlayerIcons
@@ -141,10 +142,10 @@ fun PlayersScreen(viewModel: MainViewModel) {
 fun AddPlayerDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
 
-    AlertDialog(
+    CustomDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nuevo Jugador") },
-        text = {
+        title = "Nuevo Jugador",
+        content = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -153,7 +154,11 @@ fun AddPlayerDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = AoOrange,
-                    focusedLabelColor = AoOrange
+                    focusedLabelColor = AoOrange,
+                    unfocusedBorderColor = Color.Gray,
+                    unfocusedLabelColor = Color.Gray,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
                 )
             )
         },
@@ -163,12 +168,12 @@ fun AddPlayerDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                 enabled = name.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = AoOrange)
             ) {
-                Text("Agregar")
+                Text("Agregar", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar")
+                Text("Cancelar", color = Color.Gray)
             }
         }
     )
@@ -222,10 +227,10 @@ fun BadgeSelectionDialog(
     val remoteTeams by viewModel.remoteTeams.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    AlertDialog(
+    CustomDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Elegir Escudo") },
-        text = {
+        title = "Elegir Escudo",
+        content = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 TabRow(
                     selectedTabIndex = selectedTab,
@@ -241,12 +246,12 @@ fun BadgeSelectionDialog(
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("Local", fontSize = 12.sp) }
+                        text = { Text("Local", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Cloud (${remoteTeams.size})", fontSize = 12.sp) }
+                        text = { Text("Cloud (${remoteTeams.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     )
                 }
 
@@ -310,7 +315,7 @@ fun BadgeSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cerrar")
+                Text("Cerrar", color = AoOrange, fontWeight = FontWeight.Bold)
             }
         }
     )

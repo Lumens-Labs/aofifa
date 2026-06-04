@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,70 +34,107 @@ import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.theme.PlayerIcons
 import com.example.myapplication.ui.viewmodel.MainViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MatchDetailsScreen(asadoId: String, viewModel: MainViewModel) {
+fun MatchDetailsScreen(
+    asadoId: String,
+    viewModel: MainViewModel,
+    onNavigateBack: () -> Unit
+) {
     val snapshot by viewModel.snapshot.collectAsState()
     
-    snapshot?.let { data ->
-        val asado = data.asados.find { it.id == asadoId }
-        val matches = data.matches.filter { it.asadoId == asadoId }
-        val playersMap = data.players.associateBy { it.id }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            // Header
-            Text(
-                text = asado?.date ?: "Fecha desconocida",
-                style = MaterialTheme.typography.headlineSmall,
-                color = AoOrange,
-                fontWeight = FontWeight.Bold
-            )
-            asado?.comment?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Detalle de Asado", fontWeight = FontWeight.Bold, color = AoOrange) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Atrás",
+                            tint = AoOrange
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
                 )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Box(
+            )
+        }
+    ) { innerPadding ->
+        snapshot?.let { data ->
+            val asado = data.asados.find { it.id == asadoId }
+            val matches = data.matches.filter { it.asadoId == asadoId }
+            val playersMap = data.players.associateBy { it.id }
+
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                    .padding(12.dp)
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp)
             ) {
+                // Header
                 Text(
-                    text = "Este asado ha finalizado. No se pueden registrar más partidos.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    text = asado?.date ?: "Fecha desconocida",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
                 )
-            }
+                asado?.comment?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = "Este asado ha finalizado. No se pueden registrar más partidos.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "Partidos de hoy",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+                Text(
+                    text = "Partidos de hoy",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(matches) { match ->
-                    MatchItem(match, playersMap)
+                if (matches.isEmpty()) {
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No se jugaron partidos en esta jornada.", color = Color.Gray)
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(matches) { match ->
+                            MatchItem(match, playersMap)
+                        }
+                    }
                 }
             }
+        } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = AoOrange)
         }
-    } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = AoOrange)
     }
 }
 
@@ -105,6 +144,7 @@ fun MatchItem(match: Match, playersMap: Map<String, com.example.myapplication.do
     val loser = playersMap[match.loserId]
     var isExpanded by remember { mutableStateOf(false) }
     var showFullImage by remember { mutableStateOf(false) }
+    val hasPhoto = !match.photoUrl.isNullOrEmpty()
 
     Card(
         modifier = Modifier
@@ -122,12 +162,13 @@ fun MatchItem(match: Match, playersMap: Map<String, com.example.myapplication.do
                 horizontalArrangement = Arrangement.Center
             ) {
                 // Winner
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                     PlayerAvatar(
                         playerId = match.winnerId,
                         avatarUrl = winner?.avatarUrl,
-                        modifier = Modifier.size(32.dp).clip(CircleShape)
+                        modifier = Modifier.size(36.dp).clip(CircleShape)
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = winner?.name ?: "???",
                         fontWeight = FontWeight.Bold,
@@ -155,21 +196,31 @@ fun MatchItem(match: Match, playersMap: Map<String, com.example.myapplication.do
                 }
 
                 // Loser
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                     PlayerAvatar(
                         playerId = match.loserId,
                         avatarUrl = loser?.avatarUrl,
-                        modifier = Modifier.size(32.dp).clip(CircleShape)
+                        modifier = Modifier.size(36.dp).clip(CircleShape)
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = loser?.name ?: "???",
                         fontWeight = FontWeight.Normal,
                         fontSize = 12.sp
                     )
                 }
+                
+                if (hasPhoto) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoCamera,
+                        contentDescription = "Tiene foto",
+                        tint = AoOrange,
+                        modifier = Modifier.size(16.dp).padding(start = 4.dp)
+                    )
+                }
             }
 
-            if (isExpanded && !match.photoUrl.isNullOrEmpty()) {
+            if (isExpanded && hasPhoto) {
                 AsyncImage(
                     model = match.photoUrl,
                     contentDescription = "Foto del encuentro",
@@ -185,7 +236,7 @@ fun MatchItem(match: Match, playersMap: Map<String, com.example.myapplication.do
         }
     }
 
-    if (showFullImage && !match.photoUrl.isNullOrEmpty()) {
+    if (showFullImage && hasPhoto) {
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { showFullImage = false },
             properties = androidx.compose.ui.window.DialogProperties(

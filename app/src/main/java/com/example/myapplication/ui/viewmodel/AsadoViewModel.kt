@@ -34,14 +34,22 @@ class AsadoViewModel(private val repository: AoRepository) : ViewModel() {
         viewModelScope.launch {
             _activeAsado.collect { asado ->
                 _currentAsadoId.value = asado?.id
-                if (asado != null) {
-                    repository.matches.collect { allMatches ->
-                        _liveMatches.value = allMatches.filter { it.asadoId == asado.id }
-                    }
-                } else {
-                    _liveMatches.value = emptyList()
-                }
             }
+        }
+        viewModelScope.launch {
+            _activeAsado
+                .flatMapLatest { asado ->
+                    if (asado != null) {
+                        repository.matches.map { allMatches ->
+                            allMatches.filter { it.asadoId == asado.id }
+                        }
+                    } else {
+                        flowOf(emptyList())
+                    }
+                }
+                .collect { filteredMatches ->
+                    _liveMatches.value = filteredMatches
+                }
         }
     }
 

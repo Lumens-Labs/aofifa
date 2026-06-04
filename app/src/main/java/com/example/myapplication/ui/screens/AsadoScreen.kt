@@ -35,7 +35,6 @@ fun AsadoScreen(
     onActiveAsadoClick: (String) -> Unit
 ) {
     val snapshot by mainViewModel.snapshot.collectAsState()
-    val currentAsadoId by asadoViewModel.currentAsadoId.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -71,13 +70,15 @@ fun AsadoScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(sortedAsados) { asado ->
-                        val isActive = asado.id == currentAsadoId
                         AsadoHistoryItem(
-                            asado = asado, 
-                            isActive = isActive,
-                            onClick = { 
-                                if (isActive) onActiveAsadoClick(asado.id)
-                                else onAsadoClick(asado.id) 
+                            asado = asado,
+                            isActive = asado.isActive == true,
+                            onClick = {
+                                if (asado.isActive == true) {
+                                    onActiveAsadoClick(asado.id)
+                                } else {
+                                    onAsadoClick(asado.id)
+                                }
                             }
                         )
                     }
@@ -185,7 +186,15 @@ fun NewAsadoDialog(
                     value = date,
                     onValueChange = { date = it },
                     label = { Text("Fecha (YYYY-MM-DD)", color = Color.Gray) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AoOrange,
+                        focusedLabelColor = AoOrange,
+                        unfocusedBorderColor = Color.Gray,
+                        unfocusedLabelColor = Color.Gray,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    )
                 )
 
                 Text(
@@ -228,7 +237,15 @@ fun NewAsadoDialog(
                     value = comment,
                     onValueChange = { comment = it },
                     placeholder = { Text("Comentario (opcional)", color = Color.Gray) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AoOrange,
+                        focusedLabelColor = AoOrange,
+                        unfocusedBorderColor = Color.Gray,
+                        unfocusedLabelColor = Color.Gray,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    )
                 )
 
                 Row(

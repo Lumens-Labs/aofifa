@@ -37,6 +37,7 @@ import com.example.myapplication.ui.viewmodel.MainViewModel
 import com.example.myapplication.ui.viewmodel.ViewModelFactory
 import com.example.myapplication.update.GithubRelease
 import com.example.myapplication.update.UpdateDialog
+import com.example.myapplication.update.UpdateStatus
 import com.example.myapplication.BuildConfig
 
 class MainActivity : ComponentActivity() {
@@ -62,9 +63,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 var releaseInfo by remember { mutableStateOf<GithubRelease?>(null) }
+                val updateStatus by app.updateManager.status.collectAsState()
 
                 LaunchedEffect(Unit) {
-                    // Reemplazar con tus datos reales de GitHub
                     releaseInfo = app.updateService.checkForUpdates(
                         "Lumens-Labs", 
                         "aofifa", 
@@ -73,18 +74,39 @@ class MainActivity : ComponentActivity() {
                 }
 
                 releaseInfo?.let { release ->
-                    UpdateDialog(
-                        release = release,
-                        onConfirm = {
-                            val apkAsset = release.assets?.firstOrNull { it.name?.endsWith(".apk") == true }
-                            val url = apkAsset?.downloadUrl
-                            val tag = release.tagName
-                            if (url != null && tag != null) {
-                                app.updateManager.downloadAndInstall(url, tag)
-                            }
-                        },
-                        onDismiss = { releaseInfo = null }
-                    )
+                    if (updateStatus !is UpdateStatus.Idle) {
+                        UpdateDialog(
+                            release = release,
+                            status = updateStatus,
+                            onConfirm = {
+                                val apkAsset = release.assets?.firstOrNull { it.name?.endsWith(".apk") == true }
+                                val url = apkAsset?.downloadUrl
+                                val tag = release.tagName
+                                if (url != null && tag != null) {
+                                    if (updateStatus is UpdateStatus.ReadyToInstall) {
+                                        app.updateManager.installApk("update_${tag}.apk")
+                                    } else {
+                                        app.updateManager.downloadAndInstall(url, tag)
+                                    }
+                                }
+                            },
+                            onDismiss = { releaseInfo = null }
+                        )
+                    } else if (releaseInfo != null) {
+                        UpdateDialog(
+                            release = release,
+                            status = updateStatus,
+                            onConfirm = {
+                                val apkAsset = release.assets?.firstOrNull { it.name?.endsWith(".apk") == true }
+                                val url = apkAsset?.downloadUrl
+                                val tag = release.tagName
+                                if (url != null && tag != null) {
+                                    app.updateManager.downloadAndInstall(url, tag)
+                                }
+                            },
+                            onDismiss = { releaseInfo = null }
+                        )
+                    }
                 }
 
                 MainScreen(mainViewModel, asadoViewModel)
@@ -109,7 +131,6 @@ fun MainScreen(mainViewModel: MainViewModel, asadoViewModel: AsadoViewModel) {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentDestination = navBackStackEntry?.destination
             
-            // Only show bottom bar on top level screens
             val showBottomBar = screens.any { it.route == currentDestination?.route }
             
             if (showBottomBar) {
@@ -200,7 +221,9 @@ fun MainScreen(mainViewModel: MainViewModel, asadoViewModel: AsadoViewModel) {
                     arguments = listOf(navArgument("asadoId") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val asadoId = backStackEntry.arguments?.getString("asadoId") ?: ""
-                    MatchDetailsScreen(asadoId = asadoId, viewModel = mainViewModel)
+                    MatchDetailsScreen(asadoId = asadoId, viewModel = mainViewModel, onNavigateBack = {
+                        navController.popBackStack()
+                    })
                 }
 
                 composable(

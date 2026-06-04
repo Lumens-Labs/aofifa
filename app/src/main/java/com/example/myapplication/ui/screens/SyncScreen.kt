@@ -11,8 +11,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.ui.components.CustomDialog
 import com.example.myapplication.ui.theme.AoOrange
 import com.example.myapplication.ui.viewmodel.MainViewModel
+import androidx.compose.ui.graphics.Color
+
 
 @Composable
 fun SyncScreen(viewModel: MainViewModel) {
@@ -108,37 +111,40 @@ fun SyncScreen(viewModel: MainViewModel) {
     }
 
     if (showDownloadConfirm) {
-        AlertDialog(
+        CustomDialog(
             onDismissRequest = { showDownloadConfirm = false },
-            title = { Text("¿Bajar Datos?") },
-            text = { Text("Se sobreescribirán todos los datos locales con la versión de la nube. Esta acción no se puede deshacer.") },
+            title = "¿Bajar Datos?",
+            content = { Text("Se sobreescribirán todos los datos locales con la versión de la nube. Esta acción no se puede deshacer.", color = Color.White) },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.refreshData()
-                    showDownloadConfirm = false
-                }) {
-                    Text("Bajar", color = AoOrange)
+                Button(
+                    onClick = {
+                        viewModel.refreshData()
+                        showDownloadConfirm = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AoOrange)
+                ) {
+                    Text("Bajar", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDownloadConfirm = false }) {
-                    Text("Cancelar")
+                    Text("Cancelar", color = Color.Gray)
                 }
             }
         )
     }
 
     if (showUploadConfirm) {
-        AlertDialog(
+        CustomDialog(
             onDismissRequest = { 
                 showUploadConfirm = false
                 uploadPassword = ""
                 passwordError = false
             },
-            title = { Text("Subir Datos a la Nube") },
-            text = {
+            title = "Subir Datos a la Nube",
+            content = {
                 Column {
-                    Text("Ingresa la contraseña para confirmar la subida.")
+                    Text("Ingresa la contraseña para confirmar la subida.", color = Color.White)
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
                         value = uploadPassword,
@@ -150,7 +156,15 @@ fun SyncScreen(viewModel: MainViewModel) {
                         isError = passwordError,
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AoOrange,
+                            focusedLabelColor = AoOrange,
+                            unfocusedBorderColor = Color.Gray,
+                            unfocusedLabelColor = Color.Gray,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
                     )
                     if (passwordError) {
                         Text(
@@ -162,16 +176,19 @@ fun SyncScreen(viewModel: MainViewModel) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (uploadPassword == "mumbongopro") {
-                        viewModel.uploadData()
-                        showUploadConfirm = false
-                        uploadPassword = ""
-                    } else {
-                        passwordError = true
-                    }
-                }) {
-                    Text("Confirmar Subida", color = AoOrange)
+                Button(
+                    onClick = {
+                        if (uploadPassword == "mumbongopro") {
+                            viewModel.uploadData()
+                            showUploadConfirm = false
+                            uploadPassword = ""
+                        } else {
+                            passwordError = true
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AoOrange)
+                ) {
+                    Text("Confirmar Subida", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -180,7 +197,7 @@ fun SyncScreen(viewModel: MainViewModel) {
                     uploadPassword = ""
                     passwordError = false
                 }) {
-                    Text("Cancelar")
+                    Text("Cancelar", color = Color.Gray)
                 }
             }
         )
