@@ -2,10 +2,10 @@
 # =============================================================
 #  AO FIFA - Release Automator
 #  Uso:
-#    ./release.sh patch    →  2.2 → 2.3
-#    ./release.sh minor    →  2.2 → 3.0
-#    ./release.sh major    →  2.2 → 3.0 (si ya es X.0)
-#    ./release.sh 2.5      →  setea versión exacta a 2.5
+#    ./release.sh patch    →  2.2.0 → 2.2.1
+#    ./release.sh minor    →  2.2.0 → 2.3.0
+#    ./release.sh major    →  2.2.0 → 3.0.0
+#    ./release.sh 2.2.5    →  setea versión exacta a 2.2.5
 # =============================================================
 
 set -e
@@ -27,9 +27,10 @@ fi
 
 if [ -z "$1" ]; then
     echo -e "${YELLOW}Uso:${NC}"
-    echo "  ./release.sh patch     →  Incrementa parche (2.2 → 2.3)"
-    echo "  ./release.sh minor     →  Incrementa minor  (2.2 → 3.0)"
-    echo "  ./release.sh 2.5       →  Setea versión exacta"
+    echo "  ./release.sh patch     →  Incrementa fix (2.2.0 → 2.2.1)"
+    echo "  ./release.sh minor     →  Incrementa minor (2.2.0 → 2.3.0)"
+    echo "  ./release.sh major     →  Incrementa major (2.2.0 → 3.0.0)"
+    echo "  ./release.sh 2.2.5     →  Setea versión exacta"
     exit 1
 fi
 
@@ -46,18 +47,28 @@ echo -e "  Versión actual: ${BOLD}v${CURRENT_VERSION}${NC} (code: ${CURRENT_COD
 # ─── Calcular nueva versión ─────────────────────────────────
 MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
 MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
+PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
+
+# Si no hay PATCH definido (ej: 2.2), lo seteamos en 0
+if [ -z "$PATCH" ]; then
+    PATCH=0
+fi
 
 case "$1" in
     patch)
-        MINOR=$((MINOR + 1))
-        NEW_VERSION="${MAJOR}.${MINOR}"
+        PATCH=$((PATCH + 1))
+        NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
         ;;
     minor)
+        MINOR=$((MINOR + 1))
+        NEW_VERSION="${MAJOR}.${MINOR}.0"
+        ;;
+    major)
         MAJOR=$((MAJOR + 1))
-        NEW_VERSION="${MAJOR}.0"
+        NEW_VERSION="${MAJOR}.0.0"
         ;;
     *)
-        # Versión exacta
+        # Versión exacta (ej: 2.2.5)
         NEW_VERSION="$1"
         ;;
 esac
